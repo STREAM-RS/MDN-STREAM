@@ -54,6 +54,9 @@ Current performance is shown in the following scatter plots, with 50% of the dat
 Note that the models supplied in this repository are trained using 100% of the <i>in situ</i> data, and so observed
 performance may differ slightly.
 
+Code is now functional for versions 3.8+ for Python
+
+
 <p align="center">
 	<img src=".res/S2B_benchmark.png?raw=true" height="311" width="721.5"></img>
 	<br>
