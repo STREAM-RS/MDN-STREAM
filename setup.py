@@ -9,7 +9,7 @@ from __version__ import __version__
 # won't work if we have requirements listed here, and only a '.' in 
 # the requirements file. 
 # Instead, we can reference the local path here, and parse the requirements
-with Path(__file__).parent.joinpath('requirements_old.txt').open() as f:
+with Path(__file__).parent.joinpath('requirements.txt').open() as f:
     requirements = [line.strip() for line in f.readlines()]
 
 setup(
