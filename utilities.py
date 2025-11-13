@@ -101,7 +101,7 @@ def get_mdn_preds(test_x, args=None, sensor="OLCI", products="chl", mode="point"
                 'adag_wavelengths': get_sensor_bands(kwargs['sensor'] + '-adag'),
             }
         if model_uid != None:
-        	kwargs.update('model_uid':model_uid)
+        	kwargs.update({'model_uid':model_uid})
         	
         args = get_args(kwargs, use_cmdline=False)
     else:
@@ -389,7 +389,7 @@ def get_mdn_preds_uncertainties(test_x, args=None, sensor="OLCI", products="chl"
                 'adag_wavelengths': get_sensor_bands(kwargs['sensor'] + '-adag'),
             }
         if model_uid != None:
-        	kwargs.update('model_uid':model_uid)
+        	kwargs.update({'model_uid':model_uid})
         	
         args = get_args(kwargs, use_cmdline=False)
     else:
