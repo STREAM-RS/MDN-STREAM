@@ -19,13 +19,15 @@ This repository contains source code for the following papers:
 
 The package can be cloned into a directory with:
 
-`git clone https://github.com/BrandonSmithJ/MDN`
+`git clone https://github.com/STREAM-RS/MDN-STREAM`
 
 Alternatively, you may use pip to install:
 
-`pip install git+https://github.com/BrandonSmithJ/MDN`
+`pip install git+https://github.com/STREAM-RS/MDN-STREAM`
 
 <br>
+
+This code base is the formalized production version used for the <a href="https://example.com">STREAM</a> website. The code components inherit heavily from <a href="https://github.com/BrandonSmithJ/MDN"> https://github.com/BrandonSmithJ/MDN</a>.
 
 The code may then either be used as a library, such as with the following:
 
