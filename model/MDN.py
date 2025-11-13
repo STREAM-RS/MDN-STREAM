@@ -409,7 +409,7 @@ class MDN:
                 'Save model as HDFS to enable processing with other tensorflow versions'
                 self.model.save(self.model_path.joinpath('trained_model.h5'))
             else:
-                assert True, f"❌. No pre-trained Tensorflow models/checkpoints found at {self.model_path}."
+                raise FileNotFoundError( f"❌. No pre-trained Tensorflow models/checkpoints found at {self.model_path}.")
         else:
             if self.model_path.joinpath('trained_model.h5').is_file():
                 'Load Tensorflow model'
@@ -419,9 +419,10 @@ class MDN:
                                                         compile=False)
                 self.model.compile(loss=self.loss, optimizer=tf.keras.optimizers.Adam(self.lr), metrics=[])
             else:
-                assert True, f"❌. No pre-trained Tensorflow models found at {self.model_path}. " \
-                             f"Since we are using Tensorflow {version.parse(tf.__version__)} need a saved HDFS model," \
-                             f"cannot use checkpoints from old Tensorflow versions."
+                raise FileNotFoundError(
+                    f"❌ No pre-trained TensorFlow models found at {self.model_path}. "
+                    f"Since we are using TensorFlow {version.parse(tf.__version__)}, "
+                    f"you need a saved HDFS model; cannot use checkpoints from older versions.")
 
     def get_coefs(self, output):
         prior, mu, scale = self._parse_outputs(output)
