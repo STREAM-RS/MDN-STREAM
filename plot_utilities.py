@@ -215,6 +215,7 @@ def create_scatterplots_trueVsPred(y_true, y_pred, color=None, short_name=None, 
 
         # minv = -2 if lbl == 'cdom' else minv_b[ctr]  # int(np.nanmin(y_true_log)) - 1 if product != 'aph' else -4
         # maxv = 3 if lbl == 'tss' else 3 if lbl == 'chl' else maxv_b[ctr]  # int(np.nanmax(y_true_log)) + 1 if product != 'aph' else 1
+        minv, maxv = minv_b[ctr], maxv_b[ctr]
         loc = ticker.LinearLocator(numticks=int(round((maxv - minv) / 0.5) + 1))
         # fmt = ticker.FuncFormatter(lambda i, _: r'$10$\textsuperscript{%.1f}' % i)
         fmt1 = ticker.FuncFormatter(lambda i, _: r'%1.1f' % (10 ** i))
