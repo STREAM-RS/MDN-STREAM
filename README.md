@@ -27,7 +27,7 @@ Alternatively, you may use pip to install:
 
 <br>
 
-This code base is the formalized production version used for the <a href="https://example.com">STREAM</a> website. The code components inherit heavily from <a href="https://github.com/BrandonSmithJ/MDN"> https://github.com/BrandonSmithJ/MDN</a>.
+This code base is the formalized production version used for the <a href="https://ladsweb.modaps.eosdis.nasa.gov/stream/">STREAM</a> website. The code components inherit heavily from <a href="https://github.com/BrandonSmithJ/MDN"> https://github.com/BrandonSmithJ/MDN</a>.
 
 The code may then either be used as a library, such as with the following:
 
