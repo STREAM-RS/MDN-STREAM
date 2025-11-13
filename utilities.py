@@ -21,7 +21,7 @@ ASPECT = 'auto'
 cmap = 'jet'
 
 
-def get_mdn_preds(test_x, args=None, sensor="OLCI", products="chl", mode="point", model_type='production',
+def get_mdn_preds(test_x, args=None, sensor="OLCI", products="chl", mode="point", model_type='production', model_uid=None,
                   verbose=False):
     """
     This function is used to generate estimates from pre-trained MDN
@@ -100,7 +100,9 @@ def get_mdn_preds(test_x, args=None, sensor="OLCI", products="chl", mode="point"
                 'aph_wavelengths': get_sensor_bands(kwargs['sensor'] + '-aph'),
                 'adag_wavelengths': get_sensor_bands(kwargs['sensor'] + '-adag'),
             }
-
+        if model_uid != None:
+        	kwargs.update('model_uid':model_uid)
+        	
         args = get_args(kwargs, use_cmdline=False)
     else:
         if verbose:
@@ -282,7 +284,7 @@ def get_mdn_uncert_ensemble(ensmeble_distribution, estimates, scaler_y_list, sca
             return ensemble_uncertainties
 
 
-def get_mdn_preds_uncertainties(test_x, args=None, sensor="OLCI", products="chl", model_type='production',
+def get_mdn_preds_uncertainties(test_x, args=None, sensor="OLCI", products="chl", model_type='production', model_uid=None,
                                 verbose=False, scaler_mode="invert", uncert_mode="full", flg_uncert_limits=False):
     """
     This function is used to generate estimates from pre-trained MDN
@@ -386,7 +388,9 @@ def get_mdn_preds_uncertainties(test_x, args=None, sensor="OLCI", products="chl"
                 'aph_wavelengths': get_sensor_bands(kwargs['sensor'] + '-aph'),
                 'adag_wavelengths': get_sensor_bands(kwargs['sensor'] + '-adag'),
             }
-
+        if model_uid != None:
+        	kwargs.update('model_uid':model_uid)
+        	
         args = get_args(kwargs, use_cmdline=False)
     else:
         if verbose:
