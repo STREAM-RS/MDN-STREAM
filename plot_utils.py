@@ -318,10 +318,10 @@ def plot_scatter(y_test, benchmarks, bands, labels, products, sensor, title=None
     folder.mkdir(exist_ok=True, parents=True)
 
     product_labels = default_dd({
-        'chl': 'Chl\\textit{a}',
-        'aph': 'a_{\\textit{ph}}',
-        'ad': 'a_{\\textit{nap}}',
-        'ag': 'a_{\\textit{cdom}}',
+        'chl': 'Chl textit{a}',
+        'aph': 'a_{textit{ph}}',
+        'ad': 'a_{textit{nap}}',
+        'ag': 'a_{textit{cdom}}',
         'tss': 'TSS',
         'pc': 'PC',
         'cdom': 'CDOM',  # 'a_{\\textit{cdom}}(443)',
@@ -461,15 +461,15 @@ def plot_scatter(y_test, benchmarks, bands, labels, products, sensor, title=None
 
     estimate_label = 'Estimated'  # 'Satellite-derived'
     x_pre = 'Measured'
-    y_pre = estimate_label.replace('-', '\\textbf{-}')
+    y_pre = estimate_label.replace('-', r'\textbf{-}')
     plabel = f'{product_labels[products[0]]} {product_units[products[0]]}'
     xlabel = fr'$\mathbf{{{x_pre} {plabel} }}$'
     ylabel = fr'$\mathbf{{{y_pre}}}$' + '' + fr'$\mathbf{{ {plabel}}}$'
     if not isinstance(plot_order, dict):
-        full_ax.set_xlabel(xlabel.replace(' ', '\\ '), fontsize=20, labelpad=10)
-        full_ax.set_ylabel(ylabel.replace(' ', '\\ '), fontsize=20, labelpad=10)
+        full_ax.set_xlabel(xlabel.replace(' ', '\ '), fontsize=20, labelpad=10)
+        full_ax.set_ylabel(ylabel.replace(' ', '\ '), fontsize=20, labelpad=10)
     else:
-        full_ax.set_xlabel(fr'$\mathbf{{{x_pre} Product}}$'.replace(' ', '\\ '), fontsize=20, labelpad=10)
+        full_ax.set_xlabel(fr'$\mathbf{{{x_pre} Product}}$', fontsize=20, labelpad=10)
 
     s_lbl = title or get_sensor_label(sensor).replace('-', ' ')
     n_pts = len(y_test)
@@ -477,7 +477,7 @@ def plot_scatter(y_test, benchmarks, bands, labels, products, sensor, title=None
     # full_ax.set_title(title.replace(' ', '\ '), fontsize=24, y=1.06)
 
     if isinstance(plot_order, dict):
-        full_ax.set_title(fr'$\mathbf{{\underline{{\large{{{s_lbl}}}}}}}$'.replace(' ', '\\ '), fontsize=24, y=1.03)
+        full_ax.set_title(fr'$\mathbf{{\underline{{\large{{{s_lbl}}}}}}}$', fontsize=24, y=1.03)
 
     for plt_idx, (label, y_true) in enumerate(zip(labels, y_test.T)):
 
@@ -611,7 +611,7 @@ def plot_scatter(y_test, benchmarks, bands, labels, products, sensor, title=None
                 ax.set_yticklabels([])
             elif isinstance(plot_order, dict):
                 ylabel = fr'$\mathbf{{{y_pre}}}$' + '' + fr'$\mathbf{{ {plabel}}}$' + '\n' + fr'$\small{{\mathit{{N\small{{=}}}}{np.isfinite(y_true_log).sum()}}}$'
-                ax.set_ylabel(ylabel.replace(' ', '\\ '), fontsize=18)
+                ax.set_ylabel(ylabel, fontsize=18)
 
             valid = np.logical_and(np.isfinite(y_true_log), np.isfinite(y_est_log))
             if valid.sum():
@@ -689,7 +689,7 @@ def plot_scatter(y_test, benchmarks, bands, labels, products, sensor, title=None
                                  fontsize=18, linespacing=0.95)
                 elif est_lbl == 'Schalles':
                     # ax.set_title(fr'$\mathbf{{\large{{{est_lbl}}}}}$'+'\n'+r'$\small{\textit{(Cao\ et\ al.\ 2020)}}$', fontsize=18)
-                    est_lb = 'Schalles\\ and\\ Yacobi'
+                    est_lb = 'Schalles and Yacobi'
                     ax.set_title(fr'$\mathbf{{\large{{{est_lb}}}}}$' + r'$\small{\textit{\ (et\ al.\ 2005)}}$',
                                  fontsize=18, linespacing=0.95)
                 else:
@@ -718,13 +718,13 @@ def plot_spectra(y_test, benchmarks, bands, labels, products, sensor, title=None
     aph_wavelengths = get_sensor_bands('HICO-aph', args) if args.use_HICO_aph else get_sensor_bands(sensor, args)
     ag_wavelengths = get_sensor_bands('HICO-adag', args) if args.use_HICO_aph else get_sensor_bands(sensor, args)
     product_labels = default_dd({
-        'chl': 'Chl\\textit{a}',
-        'aph': '\\textit{a}_{ph}',
-        'ad': '\\textit{a}_{d}',
-        'ag': '\\textit{a}_{g}',
+        'chl': 'Chltextit{a}',
+        'aph': r'\textit{a}_{ph}',
+        'ad': r'\textit{a}_{d}',
+        'ag': r'\textit{a}_{g}',
         'tss': 'TSS',
         'pc': 'PC',
-        'cdom': '\\textit{a}_{CDOM}',
+        'cdom': r'\textit{a}_{CDOM}',
     })
 
     product_units = default_dd({
@@ -766,18 +766,18 @@ def plot_spectra(y_test, benchmarks, bands, labels, products, sensor, title=None
         plabel = f'{product_labels["aph"]} {product_units["aph"]}'
 
         if index in [2263]: ax.set_title(fr'$\mathbf{{{plabel}}}$', fontsize=28)
-        plabel_x = f'Wavelength \\ [nm]'
+        plabel_x = f'Wavelength [nm]'
         # ax.set_xlabel(fr'$\mathbf{{{plabel_x}}}$')
         chl_conc = str(round(y_full[:, slices['chl']][index][0], 1))
-        chl_conc = f'{chl_conc:>7}'.replace(" ", "\\ ")
+        chl_conc = f'{chl_conc:>7}'
         pc_conc = str(round(y_full[:, slices['pc']][index][0], 1))
-        pc_conc = f'{pc_conc:>7}'.replace(" ", "\\ ")
+        pc_conc = f'{pc_conc:>7}'
 
         cdom_conc = str(round(y_full[:, slices['cdom']][index][0], 1))
-        cdom_conc = f'{cdom_conc:>5}'.replace(" ", "\\ ")
+        cdom_conc = f'{cdom_conc:>5}'
 
         tss_conc = str(round(y_full[:, slices['tss']][index][0], 1))
-        tss_conc = f'{tss_conc:>7}'.replace(" ", "\\ ")
+        tss_conc = f'{tss_conc:>7}'
 
         from pylab import text
 
@@ -795,12 +795,12 @@ def plot_spectra(y_test, benchmarks, bands, labels, products, sensor, title=None
         plabel = f'{product_labels["ag"]} {product_units["ag"]}'
 
         if index in [2263]: ax.set_title(fr'$\mathbf{{{plabel}}}$', fontsize=28)
-        plabel_x = f'Wavelength \\ [nm]'
+        plabel_x = f'Wavelength [nm]'
         if index not in [2099, 2263]: ax.set_xlabel(fr'$\mathbf{{{plabel_x}}}$', fontsize=28)
         ax.set_xlim([400, 700])
         chl_text = "Chl:"
         text(0.65, 0.865,
-             f'Chl:\\\\ {{{{{chl_conc}}}}}  \n PC: \\ \\ {{{pc_conc}}} \n CDOM: {{{cdom_conc}}} \nTSS: \\ {tss_conc}   ',
+             f'Chl: {{{{{chl_conc}}}}}  \n PC: {{{pc_conc}}} \n CDOM: {{{cdom_conc}}} \nTSS:  {tss_conc}   ',
              horizontalalignment='left', verticalalignment='center', transform=ax.transAxes, backgroundcolor='1.0',
              bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'), fontdict=font)
 

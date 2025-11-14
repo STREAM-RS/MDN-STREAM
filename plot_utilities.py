@@ -268,8 +268,8 @@ def create_scatterplots_trueVsPred(y_true, y_pred, color=None, short_name=None, 
         axes[ctr].text(0.75, 0.1, textstr1, transform=axes[ctr].transAxes, fontsize=SMALL_SIZE * 1, weight="bold",
                        verticalalignment='top', bbox=props)
 
-        axes[ctr].set_xlabel(x_label[ctr].replace(' ', '\ '), fontsize=MEDIUM_SIZE * 1, labelpad=10)
-        axes[ctr].set_ylabel(y_label[ctr].replace(' ', '\ '), fontsize=MEDIUM_SIZE * 1, labelpad=10)
+        axes[ctr].set_xlabel(x_label[ctr], fontsize=MEDIUM_SIZE * 1, labelpad=10)
+        axes[ctr].set_ylabel(y_label[ctr], fontsize=MEDIUM_SIZE * 1, labelpad=10)
         axes[ctr].set_aspect('equal', 'box')
         axes[ctr].set_title(short_name[ctr])
         axes[ctr].grid()
@@ -463,8 +463,8 @@ def create_scatterplots_axis(ax, y_true, y_pred, color=None, short_name=None, x_
     ax.text(0.75, 0.1, textstr1, transform=ax.transAxes, fontsize=SMALL_SIZE * 1, weight="bold",
             verticalalignment='top', bbox=props)
 
-    ax.set_xlabel(x_label[0].replace(' ', '\ '), fontsize=MEDIUM_SIZE * 1, labelpad=10)
-    ax.set_ylabel(y_label[0].replace(' ', '\ '), fontsize=MEDIUM_SIZE * 1, labelpad=10)
+    ax.set_xlabel(x_label[0], fontsize=MEDIUM_SIZE * 1, labelpad=10)
+    ax.set_ylabel(y_label[0], fontsize=MEDIUM_SIZE * 1, labelpad=10)
     ax.set_aspect('equal', 'box')
     ax.set_title(short_name[0])
     ax.grid()
