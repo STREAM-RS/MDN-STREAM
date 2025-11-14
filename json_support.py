@@ -119,7 +119,12 @@ def make_serializable(obj):
     elif isinstance(obj, Path):
         return {"_kind": "Path", "data": str(obj)}
     elif isinstance(obj, slice):
-        return {"_kind": "Slice", "start": int(obj.start), "stop": int(obj.stop), "step": obj.step}
+        return {
+            "_kind": "Slice",
+            "start": int(obj.start) if obj.start is not None else None,
+            "stop": int(obj.stop) if obj.stop is not None else None,
+            "step": int(obj.step) if obj.step is not None else None
+        }
     elif isinstance(obj, np.random.RandomState):
         state = obj.get_state()
         state_list = list(state)
@@ -147,7 +152,10 @@ def restore_object(obj):
             return Path(obj["data"])
 
         elif kind == "Slice":
-            return slice(int(obj["start"]), int(obj["stop"]), obj["step"])
+            start = int(obj["start"]) if obj["start"] is not None else None
+            stop = int(obj["stop"]) if obj["stop"] is not None else None
+            step = int(obj["step"]) if obj["step"] is not None else None
+            return slice(start, stop, step)
 
         elif kind == "NumpyRandomState":
             state = list(tuple(obj["data"]))

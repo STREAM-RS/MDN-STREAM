@@ -215,6 +215,7 @@ def create_scatterplots_trueVsPred(y_true, y_pred, color=None, short_name=None, 
 
         # minv = -2 if lbl == 'cdom' else minv_b[ctr]  # int(np.nanmin(y_true_log)) - 1 if product != 'aph' else -4
         # maxv = 3 if lbl == 'tss' else 3 if lbl == 'chl' else maxv_b[ctr]  # int(np.nanmax(y_true_log)) + 1 if product != 'aph' else 1
+        minv, maxv = minv_b[ctr], maxv_b[ctr]
         loc = ticker.LinearLocator(numticks=int(round((maxv - minv) / 0.5) + 1))
         # fmt = ticker.FuncFormatter(lambda i, _: r'$10$\textsuperscript{%.1f}' % i)
         fmt1 = ticker.FuncFormatter(lambda i, _: r'%1.1f' % (10 ** i))
@@ -235,14 +236,14 @@ def create_scatterplots_trueVsPred(y_true, y_pred, color=None, short_name=None, 
 
             if color is not None:
                 sns.regplot(x='true', y='pred', data=df, scatter=False,
-                            ax=axes[ctr], scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False, robust=True,
+                            ax=axes[ctr], scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False,
                             ci=None)
                 plt.scatter(np.log10(y1[valid] + 1e-6), np.log10(y2[valid] + 1e-6), c=color[:, ctr], edgecolor='k',
                             s=mrkSize, vmin=np.percentile(np.squeeze(color[:, ctr]), 10),
                             vmax=np.percentile(np.squeeze(color[:, ctr]), 90))
             else:
                 sns.regplot(x='true', y='pred', data=df, scatter=True,
-                            ax=axes[ctr], scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False, robust=True,
+                            ax=axes[ctr], scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False,
                             ci=None)
 
             kde = sns.kdeplot(x='true', y='pred', data=df,
