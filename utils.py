@@ -116,7 +116,7 @@ def download_weights(model_path_name):
                                                                              "https://nasagov.box.com/shared/static/81pa0tv6uklxt1vko3jt7l1mgmpmgraz.zip"],
         '6f2a6b07f6e8b5723a80c389456e13a6f17d7db02024a425f15f0b340fbb97e0': ["PACE-delivery",
                                                                              MDN_folder + 'PACE-delivery/6f2a6b07f6e8b5723a80c389456e13a6f17d7db02024a425f15f0b340fbb97e0.zip',
-                                                                             "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"],
+                                                                             "https://nasagov.box.com/shared/static/d3x274t98tm4n653tbrxxb55qf9sxo6v.zip"],
         'a854e7a8e92ff0eeb3ae6388a8c1f8255c2a809c1b4a3ec3faf639953e3fde28': ["PACE-delivery",
                                                                              MDN_folder + 'PACE-delivery/a854e7a8e92ff0eeb3ae6388a8c1f8255c2a809c1b4a3ec3faf639953e3fde28.zip',
                                                                              "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"],
