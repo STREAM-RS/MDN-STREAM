@@ -466,8 +466,8 @@ def plot_scatter(y_test, benchmarks, bands, labels, products, sensor, title=None
     xlabel = fr'$\mathbf{{{x_pre} {plabel} }}$'
     ylabel = fr'$\mathbf{{{y_pre}}}$' + '' + fr'$\mathbf{{ {plabel}}}$'
     if not isinstance(plot_order, dict):
-        full_ax.set_xlabel(xlabel.replace(' ', '\ '), fontsize=20, labelpad=10)
-        full_ax.set_ylabel(ylabel.replace(' ', '\ '), fontsize=20, labelpad=10)
+        full_ax.set_xlabel(xlabel, fontsize=20, labelpad=10)
+        full_ax.set_ylabel(ylabel, fontsize=20, labelpad=10)
     else:
         full_ax.set_xlabel(fr'$\mathbf{{{x_pre} Product}}$', fontsize=20, labelpad=10)
 
@@ -813,7 +813,7 @@ def plot_spectra(y_test, benchmarks, bands, labels, products, sensor, title=None
         plabel = f'{product_labels["ad"]} {product_units["ad"]}'
 
         if index in [2263]: ax.set_title(fr'$\mathbf{{{plabel}}}$', fontsize=28)
-        plabel_x = f'Wavelength \ [nm]'
+        plabel_x = f'Wavelength [nm]'
         # ax.set_xlabel(fr'$\mathbf{{{plabel_x}}}$')
         ax.set_xlim([400, 700])
 
