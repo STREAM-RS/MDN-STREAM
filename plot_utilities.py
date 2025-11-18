@@ -573,7 +573,7 @@ def find_rgb_img_nc(file_name, sensor, rhos=True):
     """
     'Get the image data and an RGB composite of the scene'
     if "L1B" not in str(file_name):
-        wvl_bands, img = get_tile_data(file_name, sensor, rhos=rhos)
+        wvl_bands, img = get_tile_data(file_name, sensor, key_in='rhos')
         wvl_bands = np.asarray(wvl_bands)
     else:
         import netCDF4
@@ -611,7 +611,7 @@ def find_rgb_img_nc(file_name, sensor, rhos=True):
     return img_rgb
 
 
-def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, ipython_mode=False):
+def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, ipython_mode=False,flipud=False):
     """
     This function can be used extract an RGB image by using the rhos data present in a netCDF file
 
@@ -636,6 +636,9 @@ def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, ipython_mode
     lon, lat, extent = get_tile_geographic_info(file_name)
     'Get the rgb composite'
     rgb_img = find_rgb_img_nc(file_name, sensor)
+    
+    if flipud: rgb_img = np.flipud(rgb_img)
+
 
     'Display the results'
     fig1, ax1 = plt.subplots(figsize=figsize)
