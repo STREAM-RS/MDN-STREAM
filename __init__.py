@@ -12,5 +12,5 @@ from .parameters import get_args
 from .utilities import get_mdn_preds, get_mdn_preds_raw, get_mdn_preds_uncertainties, map_cube_mdn_full                  #, get_mdn_uncert_ensemble, get_mdn_preds_uncertainties, map_cube_mdn_full
 from .plot_utilities import create_scatterplots_trueVsPred, display_sat_rgb, find_rgb_img, \
     overlay_rgb_mdnProducts, create_scatterplots_axis, create_performance_plots
-from .metrics import performance
+from .metrics import performance, mdsa
 from .benchmarks.chl.OC.model import OC as OC

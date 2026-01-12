@@ -40,7 +40,7 @@ def patch_numpy():
                     return np.random.RandomState(*args, **kwargs)
 
                 np.random._randomstate_ctor = _randomstate_ctor
-                print("[compat_patch] ✅ Applied NumPy _randomstate_ctor patch.")
+                print("[compat_patch] Applied NumPy _randomstate_ctor patch.")
 
         # Shim numpy._core for NumPy <2.0
         major = int(numpy_version.split(".")[0])
@@ -56,7 +56,7 @@ def patch_numpy():
                 if hasattr(np.core, "overrides"):
                     sys.modules["numpy._core.overrides"] = np.core.overrides
 
-                print("[compat_patch] ✅ Applied NumPy _core shim (multiarray, numerictypes, overrides).")
+                print("[compat_patch] Applied NumPy _core shim (multiarray, numerictypes, overrides).")
 
         # Stub new BitGenerators for pickle loading
         class RNGStub:
@@ -80,10 +80,10 @@ def patch_numpy():
                 fake_module = types.ModuleType(module_name)
                 setattr(fake_module, class_name, RNGStub)
                 sys.modules[module_name] = fake_module
-                print(f"[compat_patch] ⚠️ Stubbed {module_name}.{class_name} with RNGStub.")
+                print(f"[compat_patch] Stubbed {module_name}.{class_name} with RNGStub.")
 
     except ImportError:
-        print("[compat_patch] ⚠️ NumPy not installed, skipping patch.")
+        print("[compat_patch] ️ NumPy not installed, skipping patch.")
 
 
 def patch_tensorflow():
@@ -110,9 +110,9 @@ def patch_tensorflow():
 
                 setattr(base_module, "TrackableReference", TrackableReference)
 
-                print("[compat_patch] ✅ Applied TensorFlow TrackableReference patch (tracking.base).")
+                print("[compat_patch] Applied TensorFlow TrackableReference patch (tracking.base).")
     except ImportError:
-        print("[compat_patch] ⚠️ TensorFlow not installed, skipping patch.")
+        print("[compat_patch] TensorFlow not installed, skipping patch.")
 
 
 def apply_all():

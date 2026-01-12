@@ -24,9 +24,9 @@ plt.rcParams.update({
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
 plt.rcParams['mathtext.default'] = 'regular'
-SMALL_SIZE = 12
-MEDIUM_SIZE = 14
-BIGGER_SIZE = 16
+SMALL_SIZE = 72
+MEDIUM_SIZE = 76
+BIGGER_SIZE = 80
 mrkSize = 25
 ASPECT = "auto"
 cmap = "jet"
@@ -193,9 +193,9 @@ def create_scatterplots_trueVsPred(y_true, y_pred, color=None, short_name=None, 
         minv_b = [-1] * y_true.shape[1]
 
     'Create the base figure and set its properties'
-    fig1, axes = plt.subplots(nrows=1, ncols=y_true.shape[1], figsize=((7.5 * y_true.shape[1]), 7))
+    fig1, axes = plt.subplots(nrows=1, ncols=y_true.shape[1], figsize=((18 * y_true.shape[1]), 18))
     axes = [ax for axs in np.atleast_1d(axes) for ax in np.atleast_1d(axs)]
-    point_colors = ['xkcd:fresh green', 'xkcd:tangerine', 'xkcd:sky blue', 'xkcd:greyish blue', 'xkcd:goldenrod',
+    point_colors = ['xkcd:fresh green', 'xkcd:sky blue', 'xkcd:tangerine', 'xkcd:greyish blue', 'xkcd:goldenrod',
                     'xkcd:clay', 'xkcd:bluish purple', 'xkcd:reddish']
 
     ctr = 0
@@ -209,7 +209,7 @@ def create_scatterplots_trueVsPred(y_true, y_pred, color=None, short_name=None, 
         l_kws = {'color': point_colors[ctr], 'path_effects': [pe.Stroke(linewidth=4, foreground='k'), pe.Normal()],
                  'zorder': 22,
                  'lw': 1}
-        s_kws = {'alpha': 0.4, 'color': point_colors[ctr]}  # , 'edgecolor': 'grey'}
+        s_kws = {'alpha': 0.4, 'color': point_colors[ctr], 's': 100}  # , 'edgecolor': 'grey'}
 
         # curr_idx = 0
 
@@ -388,7 +388,7 @@ def create_scatterplots_axis(ax, y_true, y_pred, color=None, short_name=None, x_
     l_kws = {'color': def_scatter_color, 'path_effects': [pe.Stroke(linewidth=4, foreground='k'), pe.Normal()],
              'zorder': 22,
              'lw': 1}
-    s_kws = {'alpha': 0.4, 'color': "black"}  # , 'edgecolor': 'grey'}
+    s_kws = {'alpha': 0.4, 'color': "black", 's': 80}  # , 'edgecolor': 'grey'}
 
     'Set the format of the axis/ticker etc.'
     'Set axis tick locations'

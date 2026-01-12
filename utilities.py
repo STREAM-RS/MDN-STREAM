@@ -9,7 +9,6 @@ Date Created:   September 2nd, 2024
 
 from typing import Optional, Tuple
 import numpy as np
-import numpy as np
 from tqdm import tqdm
 
 
@@ -122,6 +121,8 @@ def get_mdn_preds_raw(
         raise ValueError("test_x cannot be None")
 
     return outputs, op_slices
+
+
 def get_mdn_preds(
     test_x: np.ndarray,
     args: Optional[dict] = None,
@@ -131,7 +132,8 @@ def get_mdn_preds(
     scaler_mode: str = "invert",
     model_type: str = "production",
     model_uid: Optional[str] = None,
-    verbose: bool = False
+    verbose: bool = False,
+    progress_vis: bool= True
 ) -> Tuple[np.ndarray, dict]:
     """
     Generate MDN predictions for a given input dataset.
@@ -220,7 +222,8 @@ def get_mdn_preds(
             mdn_outputs=outputs['coefs'],
             scalers=outputs['scalery'],
             scaler_mode=scaler_mode,
-            op_mode=op_mode
+            op_mode=op_mode,
+            progress_vis= progress_vis
         )
 
     else:
@@ -233,7 +236,8 @@ def get_mdn_mle_matrix(
     mdn_outputs,
     scalers=None,
     scaler_mode="invert",
-    op_mode="full"
+    op_mode="full",
+    progress_vis: bool = True
 ):
     """
     Compute MLE predictions from an ensemble of MDNs, returning a clean matrix.
@@ -258,16 +262,20 @@ def get_mdn_mle_matrix(
         - "full"   => return predictions of all models (3-D array)
         - "select" => return predictions of the model closest to ensemble median (2-D array, sample-wise)
 
+    progress_vis: bool
+        Flag controlling the progress behavior
+
     Returns
     -------
-    output : ndarray
-        Predictions:
-        - full: (n_models, n_samples, n_outputs)
-        - select: (n_samples, n_outputs)
+    Dictionary
+        output : ndarray
+            Predictions:
+            - full: (n_models, n_samples, n_outputs)
+            - select: (n_samples, n_outputs)
 
-    selected_index : ndarray or None
-        For "select": array of shape (n_samples,) indicating which model was chosen per sample
-        For "full": None
+        selected_index : ndarray or None
+            For "select": array of shape (n_samples,) indicating which model was chosen per sample
+            For "full": None
     """
 
     # ----------------------------------------
@@ -298,7 +306,7 @@ def get_mdn_mle_matrix(
     # ----------------------------------------
     mle_scaled = np.zeros((n_models, n_samples, n_outputs))
 
-    for i in tqdm(range(n_models), desc="Extracting MDN MLE"):
+    for i in tqdm(range(n_models), desc="Extracting MDN MLE", disable=not progress_vis):
         weights = mdn_outputs[i][0]
         means   = mdn_outputs[i][1]
         max_idx = np.argmax(weights, axis=1)
@@ -357,7 +365,8 @@ def get_mdn_preds_uncertainties(
     uncert_mode: str = "composite",
     model_type: str = "production",
     model_uid: Optional[str] = None,
-    verbose: bool = False
+    verbose: bool = False,
+    progress_vis: bool= True
 ) -> Tuple[dict, dict, dict]:
     """
     Generate MDN predictions and uncertainties for a given input dataset.
@@ -454,7 +463,8 @@ def get_mdn_preds_uncertainties(
         scalers=outputs['scalery'],
         scaler_mode=scaler_mode,
         op_mode=op_mode,
-        uncert_mode=uncert_mode
+        uncert_mode=uncert_mode,
+        progress_vis=progress_vis
     )
 
     return predictions_dict, uncertainties, op_slices
@@ -465,7 +475,8 @@ def get_mdn_predictions_and_uncertainties(
     scalers=None,
     scaler_mode="non_invert",
     op_mode="full",
-    uncert_mode="composite"
+    uncert_mode="composite",
+    progress_vis: bool = True
 ):
     """
     Compute MDN predictions (MLE) and uncertainties (aleatoric + epistemic) for an ensemble of MDNs.
@@ -492,6 +503,9 @@ def get_mdn_predictions_and_uncertainties(
     uncert_mode : {"composite", "limits"}
         - "composite": return SD as 'comp_unc'
         - "limits": return (low, high) bounds
+
+    progress_vis: bool
+        Flag controlling the progress behavior
 
     Returns
     -------
@@ -528,7 +542,8 @@ def get_mdn_predictions_and_uncertainties(
     mle_scaled = np.zeros((n_models, n_samples, n_outputs))
     ensemble_uncertainties = np.zeros((n_models, n_samples, n_outputs))
 
-    for m_idx, item in enumerate(tqdm(mdn_outputs, desc="Processing MDN ensemble for uncertainty")):
+    for m_idx, item in enumerate(tqdm(mdn_outputs, desc="Processing MDN ensemble for uncertainty",
+                                      disable= not progress_vis)):
         pred_wts, pred_mu, pred_sigma = item[0], item[1], item[2]
 
         # --- Compute MLE ---
@@ -606,9 +621,6 @@ def get_mdn_predictions_and_uncertainties(
     return predictions, uncertainties
 
 
-import numpy as np
-from tqdm import tqdm
-
 def map_cube_mdn_full(
     args,
     img_data: np.ndarray,
@@ -621,6 +633,7 @@ def map_cube_mdn_full(
     block_size: int = 10000,
     op_mode: str = "select",
     uncert_mode: str = "composite",
+    progress_vis: bool = True
 ):
     """
     Map an image cube using MDN to produce predictions and uncertainties.
@@ -649,6 +662,8 @@ def map_cube_mdn_full(
         Whether to select the median model or return full ensemble.
     uncert_mode : {"composite", "limits"}
         How uncertainties are returned.
+    progress_vis: bool
+        Flag controlling the progress behavior
 
     Returns
     -------
@@ -731,7 +746,7 @@ def map_cube_mdn_full(
     final_estimates = []
     final_uncert = []
 
-    for start in tqdm(range(0, water_final.shape[0], block_size), desc="Processing blocks"):
+    for start in tqdm(range(0, water_final.shape[0], block_size), desc="Processing blocks", disable= not progress_vis):
         block = water_final[start:start + block_size]
         block[block <= args.min_in_out_val] = args.min_in_out_val
 
@@ -743,7 +758,8 @@ def map_cube_mdn_full(
             scaler_mode=scaler_mode,
             op_mode=op_mode,
             uncert_mode=uncert_mode,
-            verbose=False
+            verbose=False,
+            progress_vis=args.silent
         )
 
         final_estimates.append(preds['pred'])
@@ -764,17 +780,17 @@ def map_cube_mdn_full(
     # Reconstruct image cubes
     # ------------------------
     n_outputs = final_estimates.shape[1]
-    img_preds = np.zeros((img_data.shape[0], img_data.shape[1], n_outputs))
+    img_preds = args.no_data * np.ones((img_data.shape[0], img_data.shape[1], n_outputs))
     img_preds[water_pixels[0], water_pixels[1], :] = final_estimates
 
     if uncert_mode == "limits":
-        img_uncert_lb = np.zeros_like(img_preds)
-        img_uncert_ub = np.zeros_like(img_preds)
+        img_uncert_lb = args.no_data *np.ones_like(img_preds)
+        img_uncert_ub = args.no_data * np.ones_like(img_preds)
         img_uncert_lb[water_pixels[0], water_pixels[1], :] = low_lim
         img_uncert_ub[water_pixels[0], water_pixels[1], :] = high_lim
         return img_preds, (img_uncert_lb, img_uncert_ub), op_slices
     else:
-        img_uncert = np.zeros_like(img_preds)
+        img_uncert = args.no_data * np.ones_like(img_preds)
         img_uncert[water_pixels[0], water_pixels[1], :] = final_uncert
         return img_preds, img_uncert, op_slices
 
