@@ -759,7 +759,7 @@ def map_cube_mdn_full(
             op_mode=op_mode,
             uncert_mode=uncert_mode,
             verbose=False,
-            progress_vis=args.silent
+            progress_vis=progress_vis
         )
 
         final_estimates.append(preds['pred'])
