@@ -24,9 +24,9 @@ plt.rcParams.update({
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
 plt.rcParams['mathtext.default'] = 'regular'
-SMALL_SIZE = 72
-MEDIUM_SIZE = 76
-BIGGER_SIZE = 80
+SMALL_SIZE = 16
+MEDIUM_SIZE = 18
+BIGGER_SIZE = 20
 mrkSize = 25
 ASPECT = "auto"
 cmap = "jet"
@@ -872,3 +872,4 @@ if __name__ == "__main__":
     tile_path = f"data/example_imagery/{sensor}/{date}/{location}/sat_cube.nc"
 
     img_rgb = find_rgb_img_nc(tile_path, sensor)
+
