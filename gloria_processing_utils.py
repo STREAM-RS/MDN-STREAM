@@ -123,7 +123,9 @@ def resample_Rrs(rrs_data, wvl_in, srf_folder=Path(SRF_FOLDER),
     wvl_out = get_sensor_bands(args.sensor, args)
 
     'Get the spectral response function for the appropriate sensor'
-    rsr = read(f'{srf_folder}/%s_rsr.csv' % sensor.split('-')[0])
+    rsr_og = read(f'{srf_folder}/%s_rsr.csv' % sensor.split('-')[0])
+    rsr=rsr_og.copy()
+    
     rsr[np.isnan(rsr)] = 0
     rsr[rsr < -50] = 0  # Some sheets have e.g. -999 as a placeholder
 
