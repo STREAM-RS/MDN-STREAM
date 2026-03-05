@@ -19,14 +19,27 @@ from .metrics import mape, mdsa
 from .utils import get_tile_data, get_tile_geographic_info
 
 'Set display parameters for MATPLOTLIB'
+default_params = mpl.rcParamsDefault
+modified_params = {key: value for key, value in plt.rcParams.items() if value != default_params[key]}
+
+'Set display parameters for MATPLOTLIB'
 plt.rcParams.update({
     "text.usetex": True,
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
 plt.rcParams['mathtext.default'] = 'regular'
-SMALL_SIZE = 32
-MEDIUM_SIZE = 36
-BIGGER_SIZE = 40
+print("Modified RC Params:",modified_params.keys())
+    
+SMALL_SIZE  = modified_params['axes.titlesize']   if 'axes.titlesize'   in modified_params.keys() else 12
+MEDIUM_SIZE = modified_params['axes.labelsize']   if 'axes.labelsize'   in modified_params.keys() else 14
+BIGGER_SIZE = modified_params['figure.titlesize'] if 'figure.titlesize' in modified_params.keys() else 16   
+
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Helvetica"]})
+plt.rcParams['mathtext.default'] = 'regular'
+
 mrkSize = 25
 ASPECT = "auto"
 cmap = "jet"
