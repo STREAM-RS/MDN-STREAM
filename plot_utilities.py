@@ -24,9 +24,9 @@ plt.rcParams.update({
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
 plt.rcParams['mathtext.default'] = 'regular'
-SMALL_SIZE = 16
-MEDIUM_SIZE = 18
-BIGGER_SIZE = 20
+SMALL_SIZE = 32
+MEDIUM_SIZE = 36
+BIGGER_SIZE = 40
 mrkSize = 25
 ASPECT = "auto"
 cmap = "jet"

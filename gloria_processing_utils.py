@@ -113,7 +113,7 @@ def resample_Rrs(rrs_data, wvl_in, srf_folder=Path(SRF_FOLDER),
     A numpy array where each row corresponds to a specific sample and each column corresponds to a specific band
 
     """
-    assert sensor in SUPPORTED_SENSORS, f"The tool does not currently support the Sensor: {sensor}"
+    #assert sensor in SUPPORTED_SENSORS, f"The tool does not currently support the Sensor: {sensor}"
     assert srf_folder.is_dir(), f"No directory {srf_folder} found"
     assert (rrs_data.shape[1] == len(wvl_in)), [rrs_data.shape, wvl_in.shape]
 
@@ -219,7 +219,7 @@ def get_gloria_samples(sensor="OLCI", bg_var=['chl', 'tss', 'cdom'],
     The gloria id for the samples
     """
 
-    assert sensor in SUPPORTED_SENSORS, f"The tool does not currently support the Sensor: {sensor}"
+    #assert sensor in SUPPORTED_SENSORS, f"The tool does not currently support the Sensor: {sensor}"
     assert isinstance(bg_var, list), "The variable <bg_Var> must be a list type variable"
     for item in bg_var:
         assert item in GLORIA_VARIABLE_LOOKUP, f"This tool does not currently support the variable: {item}"
@@ -378,7 +378,7 @@ def get_gloria_trainTestData(sensor='HICO', out_var=["chl", "tss", "cdom"], save
     gid: [np.ndarray: nSamples]
     The ID of each sample in the GLORIA dataset
     """
-    assert sensor in SUPPORTED_SENSORS, f"The tool does not currently support the Sensor: {sensor}"
+    #assert sensor in SUPPORTED_SENSORS, f"The tool does not currently support the Sensor: {sensor}"
     assert isinstance(out_var, list), "The variable <out_Var> must be a list type variable"
     for item in out_var:
         assert item in GLORIA_VARIABLE_LOOKUP, f"This tool does not currently support the output variable: {item}"

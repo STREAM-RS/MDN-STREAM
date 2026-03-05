@@ -232,6 +232,6 @@ def performance(key, y, y_hat, metrics=[mdsa, sspb, slope, msa, rmsle, mae, leqz
         if csv:
             return f'{key},' + ','.join([f'{f.__name__}:{f(y, y_hat)}' for f in metrics])
         else:
-            return f'{key:>12} | ' + '   '.join([f'{f.__name__}: {f(y, y_hat):>6.3f}' for f in metrics])
+            return f'{key:>12}' + '   '.join([f'{f.__name__}: {f(y, y_hat):>6.3f}' for f in metrics])
     except Exception as e:
         return f'{key:>12} | Exception: {e}'

@@ -46,6 +46,7 @@ SENSOR_LABEL = {  # http://www.ioccg.org/sensors/seawifs.html
     'PRISM': 'PRISM',
     'AVIRISNG': 'AVIRISNG',
     'HYPER': '1nm Hyperspectral',
+    'SD8': 'SuperDove constellation',
 }
 
 
@@ -208,6 +209,9 @@ SENSOR_BANDS = {
 
     'PACE-adag': [410, 440, 490, 530, 560, 630, 650, 675, ],
 
+    'SD8':       [ 444, 492, 533, 566, 612, 666, 707],
+    'SD8-cc_base': [ 444, 492, 566, 666, 707],          # Standardized subset to enable comparision to MSI/OLI
+ 
     'HYPER': list(range(400, 799)),
     'HYPER-nan': list(range(400, 801)),
 }
