@@ -241,6 +241,9 @@ for sensor in list(SENSOR_BANDS.keys()):
                 SENSOR_BANDS[sensor.replace(sensor2, dup)] = SENSOR_BANDS[sensor]
 
 
+def check_sensor_availability(sensor): return sensor in SENSOR_BANDS
+
+
 def get_sensor_bands(sensor, args=None):
     assert (sensor in SENSOR_BANDS), f'Unknown sensor: {sensor}'
     bands = set()

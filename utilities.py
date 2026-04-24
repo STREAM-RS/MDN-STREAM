@@ -448,7 +448,7 @@ def get_mdn_preds_uncertainties(
             kwargs['model_uid'] = model_uid
         args = get_args(kwargs, use_cmdline=False)
     elif verbose:
-        print(f"Using provided MDN args for sensor={args.sensor}, product={args.products}")
+        print(f"Using provided MDN args for sensor={args.sensor}, product={args.product}")
 
     # ------------------------
     # Get MDN predictions
@@ -748,7 +748,8 @@ def map_cube_mdn_full(
 
     for start in tqdm(range(0, water_final.shape[0], block_size), desc="Processing blocks", disable= not progress_vis):
         block = water_final[start:start + block_size]
-        block[block <= args.min_in_out_val] = args.min_in_out_val
+        if "min_in_out_val" in args:
+            block[block <= args.min_in_out_val] = args.min_in_out_val
 
         preds, uncert, op_slices = get_mdn_preds_uncertainties(
             block,
@@ -759,7 +760,7 @@ def map_cube_mdn_full(
             op_mode=op_mode,
             uncert_mode=uncert_mode,
             verbose=False,
-            progress_vis=progress_vis
+            progress_vis=False
         )
 
         final_estimates.append(preds['pred'])
