@@ -1,4 +1,5 @@
 import argparse
+from .meta import check_sensor_availability
 
 parser = argparse.ArgumentParser(epilog="""
 	Passing a filename will estimate the desired parameter from the Rrs 
@@ -125,4 +126,8 @@ def get_args(kwargs={}, use_cmdline=False, **kwargs2):
 
     for k, v in kwargs2.items():
         setattr(args, k, v)
+
+    # Adding a check to make sure the sensor is valid
+    assert check_sensor_availability(args.sensor), f'Unknown sensor: {args.sensor}'
+
     return args

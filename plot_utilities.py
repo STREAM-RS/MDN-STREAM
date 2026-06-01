@@ -885,3 +885,4 @@ if __name__ == "__main__":
     tile_path = f"data/example_imagery/{sensor}/{date}/{location}/sat_cube.nc"
 
     img_rgb = find_rgb_img_nc(tile_path, sensor)
+
