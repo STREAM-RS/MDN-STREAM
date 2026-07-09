@@ -408,7 +408,7 @@ def get_mdn_preds_uncertainties(
     -------
     predictions_dict : dict
         'pred' : ndarray
-            - "select": (n_samples, n_outputs)
+            - "select": (1, n_samples, n_outputs)
             - "full": (n_models, n_samples, n_outputs)
         'selected_index' : None for "full", or array (n_samples,) for "select"
 
@@ -479,7 +479,7 @@ def get_mdn_predictions_and_uncertainties(
     progress_vis: bool = True
 ):
     """
-    Compute MDN predictions (MLE) and uncertainties (aleatoric + epistemic) for an ensemble of MDNs.
+    Extract MDN predictions (MLE) and uncertainties (aleatoric + epistemic) from the output of an ensemble of MDNs.
 
     Parameters
     ----------
@@ -512,7 +512,7 @@ def get_mdn_predictions_and_uncertainties(
     predictions : dict
         'pred' : ndarray
             - full: (n_models, n_samples, n_outputs)
-            - select: (n_samples, n_outputs)
+            - select: (1, n_samples, n_outputs)
         'selected_index' : None for full, or array (n_samples,) for select
 
     uncertainties : dict
@@ -614,6 +614,12 @@ def get_mdn_predictions_and_uncertainties(
     # ------------------------
     # Prepare outputs
     # ------------------------
+    if op_mode == "select":
+        #update the shape to have a dummy model dimension for consistency
+        pred_array = np.expand_dims(pred_array, axis=0)
+        high = np.expand_dims(high, axis=0)
+        low = np.expand_dims(low, axis=0)
+
     predictions = {"pred": pred_array, "selected_index": selected_index}
 
     uncertainties = {"comp_unc": high - low} if uncert_mode == "composite" else {"low_lim": low, "high_lim": high}

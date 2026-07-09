@@ -10,12 +10,12 @@ Email:                  arun.saranathan@ssaihq.com/
                         fnu.arunmuralidharansaranathan@nasa.gov
 """
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union, List, Dict
 import numpy as np
 
 from .meta import get_sensor_bands
 from .parameters import get_args
-from .utilities import get_mdn_preds_uncertainties, get_mdn_preds_raw
+from .utilities import get_mdn_predictions_and_uncertainties, get_mdn_preds_raw, get_mdn_preds_uncertainties
 
 #rgb_bands = [660, 550, 440]
 min_in_out_val = 1e-6
@@ -198,24 +198,107 @@ def get_spectral_preds_raw(
     kwargs = get_default_pipeline_kwargs(sensor=sensor, product=products)
     args = get_args(**kwargs)
 
-    outputs, op_slices = get_mdn_preds_raw(test_x, args=args, op_mode="full",
-                                                                 scaler_mode="non_invert")
+    # Get the predictions from the MDN
+    outputs, op_slices = get_mdn_preds_raw(test_x, args=args, op_mode="full", scaler_mode="non_invert")
 
-    return outputs, op_slices
+    _ , uncertainties = get_mdn_predictions_and_uncertainties(mdn_outputs=outputs['coefs'],  op_mode="full", scaler_mode="non_invert", uncert_mode="composite")                                                                 
+
+    return outputs, uncertainties, op_slices
+
+
+def subset_mdn_by_variable_slices(
+        mdn_preds: Union[Dict[str, np.ndarray], np.ndarray],
+        mdn_uncert: Union[Dict[str, np.ndarray], np.ndarray],
+        mdn_preds_slices: Dict[str, Union[slice, tuple, list, int]],
+        target_keys: List[str]
+    ) -> Tuple[Union[Dict[str, np.ndarray], np.ndarray], Union[Dict[str, np.ndarray], np.ndarray], dict]:
+    """
+    Filters MDN prediction and uncertainty structures along their last axis 
+    using a set of target keys, and recalculates their relative output slices.
+
+    Parameters
+    ----------
+    mdn_preds : dict or np.ndarray
+        Predictions structure. If a array, shape is typically 
+        (n_models, n_samples, n_outputs). If a dictionary, values are arrays.
+
+    mdn_uncert : dict or np.ndarray
+        Uncertainties structure matching the type and shape behavior of mdn_preds.
+
+    mdn_preds_slices : dict
+        Dictionary mapping original feature keys to their index or slice bounds 
+        along the last axis (n_outputs).
+
+    target_keys : list of str
+        The specific product/feature keys to extract from the datasets.
+
+    Returns
+    -------
+    updated_preds : dict or np.ndarray
+        Subsetted predictions containing only columns belonging to target_keys.
+
+    updated_uncert : dict or np.ndarray
+        Subsetted uncertainties containing only columns belonging to target_keys.
+
+    updated_slices : dict
+        New dictionary of output slices adjusted relative to the newly shifted 
+        and sequential output array columns.
+    """
+    valid_keys = [k for k in target_keys if k in mdn_preds_slices]
+    if not valid_keys:
+        raise ValueError(f"None of the target keys {target_keys} exist in the model's output slices: {list(mdn_preds_slices.keys())}")
+        
+    column_indices = []
+    updated_slices = {}
+    current_new_idx = 0
+    
+    for key in valid_keys:
+        orig_slice = mdn_preds_slices[key]
+        
+        # Convert slice, tuple, list, or single integer to a flat list of column indices
+        if isinstance(orig_slice, slice):
+            start = orig_slice.start if orig_slice.start is not None else 0
+            stop = orig_slice.stop
+            feature_indices = list(range(start, stop))
+        elif isinstance(orig_slice, (tuple, list)):
+            feature_indices = list(orig_slice)
+        else:
+            feature_indices = [orig_slice]
+            
+        column_indices.extend(feature_indices)
+        
+        # Track the new shifted slice bounds
+        feature_width = len(feature_indices)
+        updated_slices[key] = slice(current_new_idx, current_new_idx + feature_width)
+        current_new_idx += feature_width
+
+    # Extract along the very last axis using the accumulated column indices
+    if isinstance(mdn_preds, dict):
+        updated_preds = {k: v[..., column_indices] for k, v in mdn_preds.items()}
+        updated_uncert = {k: v[..., column_indices] for k, v in mdn_uncert.items()}
+    else:
+        updated_preds = mdn_preds[..., column_indices]
+        updated_uncert = mdn_uncert[..., column_indices]
+
+    # Pass over the selected_index if it exists in the original predictions (only needed for the "select" mode)
+    if 'selected_index' in mdn_preds:
+        updated_preds['selected_index'] = mdn_preds['selected_index']
+        
+    return updated_preds, updated_uncert, updated_slices
 
 
 def get_spectral_preds(
         test_x: np.ndarray,
         sensor: str = "OLCI",
         products: str = "chl",
-        # op_mode: str = "select",
-        return_uncert:bool = "True",
+        op_mode: str = "select",
+        return_uncert: bool = True,
         uncert_mode: str = "limits",
         scaler_mode: str = "invert",
-        progress_vis: bool= True
-    ) -> Tuple[np.ndarray, dict]:
+        progress_vis: bool = True
+    ) -> Union[Tuple[Union[Dict[str, np.ndarray], np.ndarray], Union[Dict[str, np.ndarray], np.ndarray], dict], Tuple[Union[Dict[str, np.ndarray], np.ndarray], dict]]:
     """
-    Generate MDN predictions for a given spectral input (2D) dataset from the default model
+    Generate MDN predictions for a given spectral input (2D) dataset from the default model.
 
     Parameters
     ----------
@@ -223,17 +306,20 @@ def get_spectral_preds(
         Input data (n_samples x n_features).
 
     sensor : str
-        Sensor name ).
+        Sensor name (e.g., "OLCI").
 
     products : str
-        Products to predict.
+        Comma-separated products to predict and extract (e.g., "chl,aph").
+
+    op_mode : str
+        Operation mode controlling network processing dimensions (e.g., "select").
 
     return_uncert : bool
         Whether the function returns the uncertainties. (Default: True)
 
-    uncert_mode : {"composite", "limit"}
+    uncert_mode : {"composite", "limits"}
         Defines the mode in which the uncertainty is returned:
-            - "limit": returns the upper and lower limits as estimated from the predicted distribution
+            - "limits": returns the upper and lower limits as estimated from the predicted distribution
             - "composite": returns the average distance on each side
 
     scaler_mode : {"invert", "non_invert"}
@@ -242,50 +328,39 @@ def get_spectral_preds(
     progress_vis : bool
         Whether the progress of the tqdms are shown on screen. (Default: True)
 
-   Returns
+    Returns
     -------
-    output : np.ndarray
-        Predictions (shape depends on mode):
-        - "point": (n_samples, n_outputs)
-        - "full": (n_models, n_samples, n_outputs)
+    estimates : dict or np.ndarray
+        Predictions containing only columns belonging to the requested products.
+        Shapes are preserved from underlying predictor depending on op_mode.
 
-    [uncertainties] : dict  [Optional, based on return_uncert]
-        - composite mode: {'comp_unc': ...}
-        - limits mode: {'low_lim': ..., 'high_lim': ...}
+    [uncert] : dict or np.ndarray [Optional, based on return_uncert]
+        Uncertainties structure containing only columns belonging to requested products.
 
-    op_slices : dict
-        Dictionary of output slices per predicted product.
-
+    selected_slices : dict
+        Dictionary of updated output slices mapped per predicted product.
     """
 
-    # First get the arguments for the default model
+    # 1. Fetch the default pipeline arguments
     kwargs = get_default_pipeline_kwargs(sensor=sensor, product=products)
     args = get_args(**kwargs)
 
-    # Now call the existing predictor function with these arguments
-    mdn_preds, mdn_uncert, mdn_preds_slices = get_mdn_preds_uncertainties(test_x=test_x, args=args, op_mode="select", 
-                                                    scaler_mode=scaler_mode, uncert_mode=uncert_mode, progress_vis=progress_vis)
+    # 2. Call the base predictor function
+    mdn_preds, mdn_uncert, mdn_preds_slices = get_mdn_preds_uncertainties(
+        test_x=test_x, args=args, op_mode=op_mode, 
+        scaler_mode=scaler_mode, uncert_mode=uncert_mode, progress_vis=progress_vis
+    )
 
-    # Now only extract the output corresponding to the needed products
-    products = [s.strip() for s in products.split(',')]
-    selected_slices = [mdn_preds_slices[key] for key in products]
+    # 3. Parse the requested target products
+    target_products = [s.strip() for s in products.split(',')]
     
-    # If multiple products are selected we need to select the outputs and uncertainties across the products. If only one product is selected we can just return the output as is without concatenation
-    if len(args.product.split(',')) != 1:
-        estimates, uncert = {key: mdn_preds[key][:, np.r_[tuple(selected_slices)]] for key in mdn_preds.keys()}, {key: mdn_uncert[key][:, np.r_[tuple(selected_slices)]] for key in mdn_uncert.keys()}
-    else:
-        estimates, uncert = mdn_preds, mdn_uncert
+    # 4. Extract target variables and recalculate shifting slices
+    estimates, uncert, selected_slices = subset_mdn_by_variable_slices(
+        mdn_preds, mdn_uncert, mdn_preds_slices, target_products
+    )
     
+    # 5. Structured Return
     if return_uncert:
         return estimates, uncert, selected_slices
     else:
         return estimates, selected_slices
-
-
-
-                
-
-
-
-
-
