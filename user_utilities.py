@@ -15,6 +15,7 @@ import numpy as np
 import xarray as xr
 import dask
 from dask.diagnostics import ProgressBar
+from dask import array as da
 
 from typing import Optional, Tuple, Union, List, Dict
 import re
@@ -81,6 +82,7 @@ def get_default_pipeline_kwargs(sensor, product):
                 'sat_bands': False,
                 'model_loc': "Weights_test",
                 'sensor': sensor,
+                'silent': True,
                 'model_uid': "39863a30bd3ea0c25f24a212564810cfc341ca66b6c10c8b464befac7fbf6a8f"
             }
         elif is_subset_product(product, max_model_products):
@@ -89,6 +91,7 @@ def get_default_pipeline_kwargs(sensor, product):
                 'sat_bands': False,
                 'model_loc': "Weights",
                 'sensor': sensor,
+                'silent': True,
                 'model_uid': "73bf3ca36f95d13a38032a36f7565a992fa772af0833ad2f74b710b6df33eba2"
             }
         else:
@@ -106,6 +109,7 @@ def get_default_pipeline_kwargs(sensor, product):
                 'model_loc': "Weights",
                 'sat_bands': False,
                 'sensor': sensor,
+                'silent': True,
                 'model_uid': "69fee32c5fe248a5390f83b3eef2e4230d3f1e85507abaea670a4a8b448a6f8d",
             }
         else:
@@ -377,9 +381,10 @@ def get_spectral_preds(
 
 
 def map_cube_mdn_chunk(
-    args: Dict,
     img_chunk: xr.DataArray,
+    args: Dict,
     target_products: str = "chl",
+    n_outputs: int = 1,
     wvl_bands: Union[List[float], np.ndarray] = None,
     op_mode: str = "select",
     return_uncert: bool = True,
@@ -392,61 +397,64 @@ def map_cube_mdn_chunk(
 
     Parameters
     ----------
-    args : dict
-        Dictionary of arguments for the MDN model, typically obtained from get_default_pipeline_kwargs().
-    img_chunk : xarray.DataArray
-        Chunk of the image cube (nRow x nCols x nBands).
-    target_products : str
-        Comma-separated products to predict and extract (e.g., "chl,aph").
-    wvl_bands : array-like
-        Wavelengths corresponding to img_data bands.
-    op_mode : {"select", "full"}
-        Whether to select the median model or return full ensemble.
-    return_uncert : bool
-        Whether to return uncertainties.
-    scaler_mode : {"invert", "non_invert"}
-        Whether to invert scaled predictions.
-    land_mask : bool
-        Apply heuristic land masking.
-    landmask_threshold : float
-        Threshold for land mask.
+    img_chunk : xr.DataArray
+        An individual localized chunk slice of the input satellite image.
+    args : Dict
+        Configuration dictionary containing pipeline running options.
+    target_products : str, default 'chl'
+        A comma-separated string indicating target water constituents to calculate.
+    n_outputs : int, default 1
+        Calculated output array depth (matching the split-length of target_products).
+    wvl_bands : Union[List[float], np.ndarray], default None
+        Wavelength arrays configured for the target sensor.
+    op_mode : str, default 'select'
+        Operation mode parameter ('select' or 'ensemble').
+    return_uncert : bool, default True
+        If True, calculates uncertainty ranges dynamically.
+    scaler_mode : str, default 'invert'
+        Scaler mode config passed to the get_spectral_preds pipeline helper.
+    land_mask : bool, default False
+        If True, calculates a spatial land mask inside this chunk block.
+    landmask_threshold : float, default 0.0
+        Wavelength threshold utilized by the land masking algorithm.
 
     Returns
     -------
-    ds_chunk : xarray.Dataset
-        A dataset containing spatial predictions and uncertainty limits mapped for the block.
+    xr.Dataset
+        An xr.Dataset block representing processed output variables for this chunk area.
     """
-    # 1. Transpose the chunk to (y, x, band) and extract NumPy arrays safely
+    # 1. Transpose chunk and extract NumPy structures safely
     img_chunk_t = img_chunk.transpose("y", "x", "band")
-    img_chunk_np = img_chunk_t.values
+    img_chunk_np = np.asarray(img_chunk_t.data)  # Safely coerces the Dask chunk to a local NumPy array
 
     # 2. Extract metadata parameters safely
     n_rounds = args.get("n_rounds", args["n_rounds"]) if isinstance(args, dict) else args.n_rounds
-    n_outputs = len(target_products.split(","))
     n_models = 1 if op_mode == "select" else n_rounds
     no_data_val = args.get("no_data", args["no_data"]) if isinstance(args, dict) else args.no_data
 
     # 3. Initialize blank output structures using the correct 'no_data' value
-    img_preds = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs))
-    # Also initialize uncertainty grids if return_uncert is requested
+    img_preds = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs), dtype=np.float32)
+    
     if return_uncert:
-        img_uncert_lb = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs))
-        img_uncert_ub = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs))
+        img_uncert_lb = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs), dtype=np.float32)
+        img_uncert_ub = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs), dtype=np.float32)
     
     # 4. Create water mask
     if land_mask:
         img_mask = mask_land(img_chunk_np, wvl_bands, threshold=landmask_threshold)
     else:
-        img_mask = np.isnan(np.min(img_chunk_np, axis=2)).astype(float)
+        #img_mask = np.isnan(np.min(img_chunk_np, axis=2)).astype(float)
+        img_mask = np.all(np.isnan(img_chunk_np), axis=2).astype(float)
 
-    bool_mask = (img_mask == 1)
+    bool_mask = (img_mask == 0)
     water_pixels = np.where(bool_mask)
     water_spectra = img_chunk_np[bool_mask]
 
     # First filter: Remove spectra with majority invalid/negative values
-    maj_neg = (water_spectra < 1e-4).sum(axis=1) > 5
+    maj_neg = (water_spectra < 1e-6).sum(axis=1) > 5
     water_spectra = water_spectra[~maj_neg]
     water_pixels = tuple(p[~maj_neg] for p in water_pixels)
+    
 
     # Second filter: Prepare spectra and drop any remaining NaNs/Infs 
     water_final = np.ma.masked_invalid(water_spectra).reshape((-1, water_spectra.shape[-1]))
@@ -457,39 +465,41 @@ def map_cube_mdn_chunk(
 
     # Build dynamic output dict base
     data_vars = {
-        "predictions": (("model", "y", "x", "output"), img_preds.astype(np.float32))
+        "predictions": (("model", "y", "x", "output"), img_preds)
     }
 
     # If we have valid water pixels, process them through the MDN model
     if water_final.size > 0:
         if return_uncert:
-            preds, uncert, _ = get_spectral_preds(test_x=water_final, sensor=args.sensor, products=target_products, op_mode=op_mode,
-            return_uncert=return_uncert, uncert_mode="limits", progress_vis=False)            
+            preds, uncert, _ = get_spectral_preds(
+                test_x=water_final, sensor=args.sensor, products=target_products, op_mode=op_mode,
+                return_uncert=return_uncert, uncert_mode="limits", progress_vis=False
+            )            
         else:
-            preds, _ = get_spectral_preds(test_x=water_final, sensor=args.sensor, products=target_products, op_mode=op_mode,
-            return_uncert=return_uncert, uncert_mode="limits", progress_vis=False) 
+            preds, _ = get_spectral_preds(
+                test_x=water_final, sensor=args.sensor, products=target_products, op_mode=op_mode,
+                return_uncert=return_uncert, uncert_mode="limits", progress_vis=False
+            ) 
 
         # Re-assign the predictions back into the spatial grid coordinate slices
         img_preds[:, water_pixels[0], water_pixels[1], :] = preds['pred']
-        data_vars["predictions"] = (("model", "y", "x", "output"), img_preds.astype(np.float32))
+        data_vars["predictions"] = (("model", "y", "x", "output"), img_preds)
         
         if return_uncert:
             img_uncert_lb[:, water_pixels[0], water_pixels[1], :] = uncert["low_lim"]
             img_uncert_ub[:, water_pixels[0], water_pixels[1], :] = uncert["high_lim"]
 
-    # FIXED: Ensure uncertainty datasets are assigned to data_vars outside the water conditional.
-    # This prevents Dask schema mismatches on pure-land chunks.
     if return_uncert:
-        data_vars["uncertainty_low"] = (("model", "y", "x", "output"), img_uncert_lb.astype(np.float32))
-        data_vars["uncertainty_high"] = (("model", "y", "x", "output"), img_uncert_ub.astype(np.float32))
+        data_vars["uncertainty_low"] = (("model", "y", "x", "output"), img_uncert_lb)
+        data_vars["uncertainty_high"] = (("model", "y", "x", "output"), img_uncert_ub)
 
-    # PACKAGING PORTION: Return the Dataset natively
+    # =================================================================
+    # CRITICAL FIX: DO NOT DEFINE SPATIAL COORDINATES HERE AT ALL
+    # =================================================================
     ds_chunk = xr.Dataset(
         data_vars=data_vars,
         coords={
             "model": np.arange(n_models),
-            "y": img_chunk_t.y,
-            "x": img_chunk_t.x,
             "output": np.arange(n_outputs),
         }
     )
@@ -498,9 +508,8 @@ def map_cube_mdn_chunk(
 
 def map_cube_mdn(
     img_data: xr.DataArray,
-    sensor: str = "OLCI",
+    sensor: str,
     products: str = "chl",
-    wvl_bands: Union[List[float], np.ndarray] = None,
     op_mode: str = "select",
     return_uncert: bool = True,
     uncert_mode: str = "limits",
@@ -508,136 +517,67 @@ def map_cube_mdn(
     land_mask: bool = False,
     landmask_threshold: float = 0.0,
     progress_vis: bool = True,
-):
+) -> xr.Dataset:
     """
-    Map an image cube using MDN to produce predictions and uncertainties.
+    Map an entire image cube using MDN via parallelized Dask block execution.
 
     Parameters
     ----------
-    args : dict or object
-        Configuration/argument namespace for the MDN model pipeline.
-    img_data : xarray.DataArray
-        Image cube (nRow x nCols x nBands).
+    img_data : xr.DataArray
+        The input satellite image cube containing spatial dimensions (y, x) and bands.
     sensor : str
-        Sensor name (e.g., "OLCI").
-    products : str
-        Comma-separated products to predict and extract (e.g., "chl,aph").
-    wvl_bands : array-like
-        Wavelengths corresponding to img_data bands.
-    op_mode : {"select", "full"}
-        Whether to select the median model or return full ensemble.
-    return_uncert : bool
-        Whether to return uncertainties.
-    uncert_mode : {"composite", "limits"}
-        How uncertainties are returned.
-    scaler_mode : {"invert", "non_invert"}
-        Whether to invert scaled predictions.
-    land_mask : bool
-        Apply heuristic land masking.
-    landmask_threshold : float
-        Threshold for land mask.
-    progress_vis : bool
-        Flag controlling the progress behavior.
+        The satellite sensor name (e.g., 'MSI', 'OLCI', 'OLI').
+    products : str, default 'chl'
+        Comma-separated string of target products to retrieve (e.g., 'chl,tss').
+    op_mode : str, default 'select'
+        Operation mode for model execution (e.g., 'select' or 'ensemble').
+    return_uncert : bool, default True
+        If True, returns low and high uncertainty limits alongside predictions.
+    uncert_mode : str, default 'limits'
+        The format of uncertainty estimations (e.g., 'limits').
+    scaler_mode : str, default 'invert'
+        The mode used by scaling pipelines when preprocessing/postprocessing values.
+    land_mask : bool, default False
+        If True, applies a band-based thresholding filter to mask land pixels.
+    landmask_threshold : float, default 0.0
+        The threshold value utilized during the land masking routine.
+    progress_vis : bool, default True
+        If True, shows a visual Dask ProgressBar tracking processing chunks.
 
     Returns
     -------
-    final_ds : xarray.Dataset
-        Processed outputs containing predictions and optional uncertainties.
-    op_slices : dict
-        Slices mapping each product to its respective index in the output dimension.
+    xr.Dataset
+        The computed dataset containing output predictions and uncertainty estimations.
     """
-    # ------------------------
-    # Validate inputs
-    # ------------------------
-    if not isinstance(img_data, xr.DataArray):
-        raise TypeError(f"Expected 'img_data' to be an xarray.DataArray, got {type(img_data).__name__}")
-    if img_data.ndim != 3:
-        raise ValueError(f"Expected 'img_data' to have exactly 3 dimensions (bands, y, x), got ndim={img_data.ndim}")
-
-    if not bool(re.match(PRODUCT_PATTERN, products)):
-        raise ValueError(f"Invalid 'products' format: '{products}'. Expected a comma-separated string.")
-
-    if scaler_mode not in ["invert", "non_invert"]:
-        raise ValueError(f"Invalid 'scaler_mode': '{scaler_mode}'.")
-
-    if op_mode not in ["select", "full"]:
-        raise ValueError(f"Invalid 'op_mode': '{op_mode}'.")
-
-    if uncert_mode not in ["composite", "limits"]:
-        raise ValueError(f"Invalid 'uncert_mode': '{uncert_mode}'.")
-
-    if wvl_bands is None:
-        wvl_bands = get_sensor_bands(sensor)
-    if not isinstance(wvl_bands, (list, np.ndarray)):
-        raise TypeError(f"Expected 'wvl_bands' to be a list or numpy.ndarray, got {type(wvl_bands).__name__}")
-        
-    if len(wvl_bands) != img_data.shape[0]:
-        raise ValueError(
-            f"Dimension mismatch: length of 'wvl_bands' ({len(wvl_bands)}) must match "
-            f"the spectral band axis dimension of 'img_data' ({img_data.shape[0]})"
-        )
-
-    # ----------------------------------------------------
-    # Safe Conditional Chunking Guard
-    # ----------------------------------------------------
-    # If the user passed an unchunked array, fallback to spatial chunking.
-    # If it is already chunked, this block is completely skipped!
-    if img_data.chunks is None:
-        img_data = img_data.chunk({"band": -1, "y": 100, "x": 100})
-
-    # Fetch pipeline configurations
+    #  Fetch pipeline configurations
     kwargs = get_default_pipeline_kwargs(sensor=sensor, product=products)
     args = get_args(**kwargs)
-
-    # Match model bands to image bands
-    sensor_bands = get_sensor_bands(args.sensor)
-    valid_bands = []
-    for b in sensor_bands:
-        idx = np.argmin(np.abs(np.asarray(wvl_bands) - b))
-        if np.abs(wvl_bands[idx] - b) > 5:
-            raise ValueError(f"Image bands {wvl_bands} do not match sensor bands {sensor_bands}")
-        valid_bands.append(idx)
-
-    # Compute expected metadata shapes
-    n_rounds = args.get("n_rounds", args["n_rounds"]) if isinstance(args, dict) else args.n_rounds
-    n_models = 1 if op_mode == "select" else n_rounds
-    n_outputs = len(args.product.split(","))
-
-    # ----------------------------------------------------
-    # Generate Dask-backed template arrays
-    # ----------------------------------------------------
-    # Dynamically match YOUR existing chunks for the spatial dimensions
-    y_chunks = img_data.chunks[1] 
-    x_chunks = img_data.chunks[2] 
     
-    # Establish new dimension chunks
-    model_chunks = (n_models,)
-    output_chunks = (n_outputs,)
-    template_chunks = (model_chunks, y_chunks, x_chunks, output_chunks)
+    #  Extract configuration metadata
+    wvl_bands = get_sensor_bands(sensor)
+    n_rounds = args.get("n_rounds", args["n_rounds"]) if isinstance(args, dict) else args.n_rounds
+    n_outputs = len(products.split(","))
+    n_models = 1 if op_mode == "select" else n_rounds
+    no_data_val = args.get("no_data", args["no_data"]) if isinstance(args, dict) else args.no_data
 
-    # Use dask.array.empty to mimic chunk structure safely without loading to memory
+    # Fetch op_slices once globally using a dummy single pixel vector
+    dummy_pixel = 0.01 * np.ones((1, len(wvl_bands)))
+    _, op_slices =  get_spectral_preds(test_x=dummy_pixel, sensor= sensor, products=products, op_mode=op_mode, return_uncert=False, uncert_mode="limits",
+                                        progress_vis=False) 
+
+    # Create dummy arrays for building the template
+    dummy_preds = np.empty((n_models, len(img_data.y), len(img_data.x), n_outputs), dtype=np.float32)
+    
     template_vars = {
-        "predictions": (
-            ("model", "y", "x", "output"), 
-            da.empty((n_models, len(img_data.y), len(img_data.x), n_outputs), chunks=template_chunks, dtype=np.float32)
-        )
+        "predictions": (("model", "y", "x", "output"), dummy_preds)
     }
+    
     if return_uncert:
-        template_vars["uncertainty_low"] = (
-            ("model", "y", "x", "output"), 
-            da.empty((n_models, len(img_data.y), len(img_data.x), n_outputs), chunks=template_chunks, dtype=np.float32)
-        )
-        template_vars["uncertainty_high"] = (
-            ("model", "y", "x", "output"), 
-            da.empty((n_models, len(img_data.y), len(img_data.x), n_outputs), chunks=template_chunks, dtype=np.float32)
-        )
+        dummy_uncert = np.empty((n_models, len(img_data.y), len(img_data.x), n_outputs), dtype=np.float32)
+        template_vars["uncertainty_low"] = (("model", "y", "x", "output"), dummy_uncert)
+        template_vars["uncertainty_high"] = (("model", "y", "x", "output"), dummy_uncert)
 
-        if uncert_mode == "composite":
-            template_vars["uncertainty_comp"] = (
-                ("model", "y", "x", "output"), 
-                da.empty((n_models, len(img_data.y), len(img_data.x), n_outputs), chunks=template_chunks, dtype=np.float32)
-            )
-
+    # 4. Define the initial full template dataset
     template_ds = xr.Dataset(
         data_vars=template_vars,
         coords={
@@ -647,19 +587,42 @@ def map_cube_mdn(
             "output": np.arange(n_outputs),
         }
     )
+    if "spatial_ref" in img_data.coords:
+        template_ds = template_ds.assign_coords({"spatial_ref": img_data.spatial_ref})
 
-    # Fetch op_slices once globally using a dummy single pixel vector
-    dummy_pixel = 0.01 * np.ones((1, len(valid_bands)))
-    _, op_slices =  get_spectral_preds(test_x=dummy_pixel, sensor= sensor, products=products, op_mode=op_mode, return_uncert=False, uncert_mode="limits",
-                    progress_vis=False)
+    # =================================================================
+    # CRITICAL FIX: PRESERVE, STRIP & CHUNK COORDINATES
+    # =================================================================
+    # Capture the global coordinates to safely bind back on later
+    global_coords = {
+        "y": img_data.coords["y"],
+        "x": img_data.coords["x"]
+    }
+    if "spatial_ref" in img_data.coords:
+        global_coords["spatial_ref"] = img_data.coords["spatial_ref"]
+    if "latitude" in img_data.coords:
+        global_coords["latitude"] = img_data.coords["latitude"]
+    if "longitude" in img_data.coords:
+        global_coords["longitude"] = img_data.coords["longitude"]
 
-    # Run mapping across dask-chunk blocks lazily
+    # Strip coordinates from template so xr.map_blocks doesn't perform strict coordinate validation
+    coords_to_drop = ["y", "x", "spatial_ref", "latitude", "longitude"]
+    clean_template = template_ds.drop_vars(coords_to_drop, errors="ignore")
+
+    # Chunk the template matching the input image chunks so it has Dask arrays
+    clean_template = clean_template.chunk({
+        "y": img_data.chunksizes["y"],
+        "x": img_data.chunksizes["x"]
+    })
+
+    # 5. Run mapping across dask-chunk blocks lazily
     lazy_result_ds = xr.map_blocks(
         map_cube_mdn_chunk,
         img_data, 
         kwargs={
             "args": args,
             "target_products": products,
+            "n_outputs": n_outputs,
             "wvl_bands": wvl_bands,
             "op_mode": op_mode,
             "land_mask": land_mask,
@@ -667,23 +630,19 @@ def map_cube_mdn(
             "scaler_mode": scaler_mode,
             "return_uncert": return_uncert
         },
-        template=template_ds
+        template=clean_template  # Use clean coordinate-free chunked template
     )
 
-    # If composite mode is selected, compute the difference lazily
-    if return_uncert and uncert_mode == "composite":
-        lazy_result_ds["uncertainty_comp"] = (
-            lazy_result_ds["uncertainty_high"] - lazy_result_ds["uncertainty_low"]
-        )
+    # Re-assign the true global coordinates back to the lazy dataset before computing
+    final_lazy_ds = lazy_result_ds.assign_coords(global_coords)
 
-    # Compute execution with progress bar
+    # 6. Execute computation with visual feedback
     if progress_vis:
+        from dask.diagnostics import ProgressBar
+        print("Computing MDN predictions across chunks...")
         with ProgressBar():
-            final_ds = lazy_result_ds.compute()
+            final_ds = final_lazy_ds.compute()
     else:
-        final_ds = lazy_result_ds.compute()
-
-    # Save metadata dictionary attributes
-    #final_ds.attrs["op_slices"] = op_slices
+        final_ds = final_lazy_ds.compute()
 
     return final_ds, op_slices

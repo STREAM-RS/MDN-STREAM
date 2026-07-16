@@ -12,7 +12,7 @@ from .gloria_processing_utils import get_gloria_trainTestData, resample_Rrs
 from .parameters import get_args
 from .utilities import get_mdn_preds, get_mdn_preds_raw, get_mdn_preds_uncertainties, map_cube_mdn_full                  #, get_mdn_uncert_ensemble, get_mdn_preds_uncertainties, map_cube_mdn_full
 from .plot_utilities import create_scatterplots_trueVsPred, display_sat_rgb, find_rgb_img, \
-    overlay_rgb_mdnProducts, create_scatterplots_axis, create_performance_plots
+    overlay_rgb_mdnProducts, create_scatterplots_axis, create_performance_plots, overlay_rgb_mdn_preds_limits
 from .metrics import performance, mdsa, sspb, slope, rmsle
 from .benchmarks.chl.OC.model import OC as OC
 from .user_utilities import get_spectral_preds, get_spectral_preds_raw,  map_cube_mdn

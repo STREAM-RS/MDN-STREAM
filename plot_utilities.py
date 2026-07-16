@@ -681,15 +681,15 @@ def overlay_rgb_mdnProducts(rgb_img, model_preds, extent, img_uncert=None, produ
     assert rgb_img.shape[2] == 3, "The <rgb_img> can only have three bands"
     if len(model_preds.shape) == 3:
         assert model_preds.shape[2] == 1, "This function is only set up to the overlay the predictions of a single " \
-                                          "parameter at a time"
+                                          "band at a time"
 
     assert len(extent) == 4, "Need to provide the spatial extent of the image to be displayed"
     if img_uncert is not None:
         assert rgb_img.shape[:2] == img_uncert.shape[
                                     :2], f"The base RGB and uncertainty image should have the same spatial dimensions"
         if len(img_uncert.shape) > 2:
-            assert model_preds.shape[2] == 1, "This function is only set up to the overlay the predictions of a single " \
-                                              "parameter at a time"
+            assert img_uncert.shape[2] == 1, "This function is only set up to the overlay the predictions of a single " \
+                                              "band at a time"
 
     'Create the basic figure and set its properties'
     if img_uncert is not None:
@@ -724,6 +724,119 @@ def overlay_rgb_mdnProducts(rgb_img, model_preds, extent, img_uncert=None, produ
         pred_uncert_labels = [f'{(10 ** (i)):.2f}' for i in
                               pred_uncert_ticks]  # [f'{i:2.3f}' for i in pred_uncert_ticks]
         colorbar(img4, ticks_list=pred_uncert_ticks, lbl_list=pred_uncert_labels)
+
+    if not ipython_mode:
+        return fig1
+
+
+def overlay_rgb_mdn_preds_limits(rgb_img, model_preds, extent, img_uncert_low, img_uncert_high,
+                                 product_name='Parameter', figsize=(18, 6), 
+                                 pred_ticks=[-1, 0, 1, 2], pred_uncert_ticks=[-1, 0, 1, 2],
+                                 ipython_mode=False,  ASPECT='equal', BIGGER_SIZE=12):
+    """
+    This function can be used to overlay the MDN-prediction maps (along with lower and upper uncertainty limits)
+    over the RGB composite of a satellite image for display in a three-column panel.
+
+    :param rgb_img: [np.ndarray, rows X cols X 3]
+    The RGB composite of the scene
+
+    :param model_preds: [np.ndarray, rows X cols]
+    The MDN predictions for that location
+
+    :param extent: [np.array]
+    A description of the extent of the location
+
+    :param img_uncert_low: [np.ndarray, rows X cols]
+    The lower uncertainty limit associated with the MDN predictions for that location
+
+    :param img_uncert_high: [np.ndarray, rows X cols]
+    The upper uncertainty limit associated with the MDN predictions for that location
+
+    :param product_name: (string) (Default: "Parameter")
+    The name of the product that has been predicted
+
+    :param ipython_mode:[bool] (Default: False)
+    In the ipython_mode, the images are auto displayed and figure is not returned by the function
+
+    :return: fig1: A figure with appropriate plots
+    """
+
+    # --- Xarray DataArray Guard ---
+    if hasattr(rgb_img, "values"):
+        rgb_img = rgb_img.values
+    if hasattr(model_preds, "values"):
+        model_preds = model_preds.values
+    if hasattr(img_uncert_low, "values"):
+        img_uncert_low = img_uncert_low.values
+    if hasattr(img_uncert_high, "values"):
+        img_uncert_high = img_uncert_high.values
+
+    # Handle 3D inputs with a single-dimension (squeezing to 2D)
+    if len(model_preds.shape) == 3 and model_preds.shape[2] == 1:
+        model_preds = model_preds.squeeze(axis=2)
+    if len(img_uncert_low.shape) == 3 and img_uncert_low.shape[2] == 1:
+        img_uncert_low = img_uncert_low.squeeze(axis=2)
+    if len(img_uncert_high.shape) == 3 and img_uncert_high.shape[2] == 1:
+        img_uncert_high = img_uncert_high.squeeze(axis=2)
+
+    # --- Data Property Assertions ---
+    assert len(extent) == 4, "Need to provide the spatial extent of the image to be displayed."
+    assert rgb_img.shape[2] == 3, f"The <rgb_img> must have exactly 3 bands. Found shape: {rgb_img.shape}"
+    
+    spatial_shape = rgb_img.shape[:2]
+    assert model_preds.shape[:2] == spatial_shape, f"Predictions {model_preds.shape[:2]} must match RGB {spatial_shape} shape."
+    assert img_uncert_low.shape[:2] == spatial_shape, f"Lower uncertainty {img_uncert_low.shape[:2]} must match RGB {spatial_shape} shape."
+    assert img_uncert_high.shape[:2] == spatial_shape, f"Upper uncertainty {img_uncert_high.shape[:2]} must match RGB {spatial_shape} shape."
+    
+    assert len(model_preds.shape) == 2, "model_preds must be a 2D array (y, x)."
+    assert len(img_uncert_low.shape) == 2, "img_uncert_low must be a 2D array (y, x)."
+    assert len(img_uncert_high.shape) == 2, "img_uncert_high must be a 2D array (y, x)."
+
+    # --- Setup 3-Column Figure ---
+    fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=figsize, sharex=True, sharey=True)
+    fig1.patch.set_visible(True)
+    ord_val = 0
+
+    # Convert values to log10 scale
+    log_low = np.log10(img_uncert_low + 1.e-6)
+    log_preds = np.log10(model_preds + 1.e-6)
+    log_high = np.log10(img_uncert_high + 1.e-6)
+
+    # Label generation
+    pred_labels = [f'{(10 ** (i)):.2f}' for i in pred_ticks]
+    uncert_labels = [f'{(10 ** (i)):.2f}' for i in pred_uncert_ticks]
+
+    # ==========================================
+    # Column 1: Lower Limit (Left)
+    # ==========================================
+    ax1.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
+    img_low = ax1.imshow(np.ma.masked_where(log_low <= -5.9, log_low), cmap=cmap,
+                         extent=extent, aspect=ASPECT, zorder=ord_val + 1)
+    ax1.set_title(f"Lower Limit ({product_name})", fontsize=BIGGER_SIZE, fontweight="bold")
+    img_low.set_clim(pred_uncert_ticks[0], pred_uncert_ticks[-1])
+    colorbar(img_low, ticks_list=pred_uncert_ticks, lbl_list=uncert_labels)
+
+    # ==========================================
+    # Column 2: Model Predictions (Middle)
+    # ==========================================
+    ax2.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
+    img_mid = ax2.imshow(np.ma.masked_where(log_preds <= -5.9, log_preds), cmap=cmap,
+                         extent=extent, aspect=ASPECT, zorder=ord_val + 1)
+    ax2.set_title(f"MDN Predictions ({product_name})", fontsize=BIGGER_SIZE, fontweight="bold")
+    img_mid.set_clim(pred_ticks[0], pred_ticks[-1])
+    colorbar(img_mid, ticks_list=pred_ticks, lbl_list=pred_labels)
+
+    # ==========================================
+    # Column 3: Upper Limit (Right)
+    # ==========================================
+    ax3.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
+    img_high = ax3.imshow(np.ma.masked_where(log_high <= -5.9, log_high), cmap=cmap,
+                          extent=extent, aspect=ASPECT, zorder=ord_val + 1)
+    ax3.set_title(f"Upper Limit ({product_name})", fontsize=BIGGER_SIZE, fontweight="bold")
+    img_high.set_clim(pred_uncert_ticks[0], pred_uncert_ticks[-1])
+    colorbar(img_high, ticks_list=pred_uncert_ticks, lbl_list=uncert_labels)
+
+    plt.tight_layout()
 
     if not ipython_mode:
         return fig1

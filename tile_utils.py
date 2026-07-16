@@ -23,7 +23,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def translate_wavelengths_to_landsat_bands(requested_bands, wavelength_unit="nm", tolerance=20):
+def translate_wavelengths_to_landsat_bands(requested_bands, wavelength_unit="nm", tolerance=5):
     """
     Translates input center wavelengths into official Landsat 8/9 OLI string band names.
     
