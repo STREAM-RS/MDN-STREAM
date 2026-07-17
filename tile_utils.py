@@ -261,8 +261,9 @@ def subset_bbox_2d(
 def extract_netcdf_satellite_rrs(
     nc_file: Union[str, Path],
     sensor: str,
-    bands=None,
+    bands: Union[list, np.ndarray]=None,
     wavelength_unit="nm",
+    chunk_size: int = 400,
     flag_toa: bool = False,
     verbose: bool = False
 ) -> xr.DataArray:
@@ -288,6 +289,8 @@ def extract_netcdf_satellite_rrs(
     wavelength_unit : str, optional
         Unit format for center wavelengths. Supported options are 'nm' 
         (nanometers) or 'um' (microns). Default is "nm".
+    chunk_size:int, optional
+        The size of the chunks of the final xarray/DASK array.
     flag_toa : bool, optional
         If True, the function switches focus to extract Top-of-Atmosphere (TOA) 
         radiance ('rhot', 'Rhot', 'rho_t', 'RHOT') instead of 
@@ -322,6 +325,9 @@ def extract_netcdf_satellite_rrs(
             bands = get_sensor_bands(sensor)
         except NameError:
             pass
+
+    if chunk_size <= 0:
+        raise ValueError(f"The chunk size must be a positive integer. Instead got {chunk_size}")
 
     # ------------------------------------------------------------------
     # Read NetCDF contents lazily using xarray + dask backends
@@ -561,7 +567,7 @@ def extract_netcdf_satellite_rrs(
     # Use rioxarray to systematically register the CRS inside the array spatial properties
     da_final = da_final.rio.write_crs(crs_detected)
 
-    return da_final.chunk({"band": -1, "y": 100, "x": 100})  # Chunking for dask parallelism
+    return da_final.chunk({"band": -1, "y": chunk_size, "x": chunk_size})  # Chunking for dask parallelism
 
 
 def extract_composite_geotiff_wjson(
@@ -570,6 +576,7 @@ def extract_composite_geotiff_wjson(
     sensor: str,
     bands=None,
     wavelength_unit="nm",
+    chunk_size: int = 400,
     tolerance=None,
     rhow_flag: bool = False,
     flag_toa: bool = False,
@@ -590,6 +597,8 @@ def extract_composite_geotiff_wjson(
         Target center wavelengths to load (expressed in `wavelength_unit`). 
     wavelength_unit : str, optional
         Unit format for center wavelengths. Supported options are 'nm' or 'um'.
+    chunk_size:int, optional
+        The size of the chunks of the final xarray/DASK array.
     tolerance : float, optional
         Acceptable search window radius to associate raster bands.
     rhow_flag : bool, optional
@@ -605,7 +614,7 @@ def extract_composite_geotiff_wjson(
     da : xarray.DataArray
         Reflectance data array with written CRS metadata and projection properties.
     """
-    
+
     # 1. Load JSON metadata
     with open(json_metadata_path) as f:
         meta = json.load(f)
@@ -719,7 +728,7 @@ def extract_composite_geotiff_wjson(
     # Systematically write the CRS structure using rioxarray
     da_final = da_final.rio.write_crs(crs_detected)
 
-    return da_final.chunk({"band": -1, "y": 100, "x": 100})  # Chunking for dask parallelism
+    return da_final.chunk({"band": -1, "y": chunk_size, "x": chunk_size})  # Chunking for dask parallelism
 
 
 def extract_band_geotiff(
@@ -728,6 +737,7 @@ def extract_band_geotiff(
     sensor: str,
     wavelength_unit="nm",
     tolerance=None,
+    chunk_size: int = 400,
     rhow_flag: bool = False,
     flag_toa: bool = False,
 ) -> xr.DataArray:
@@ -747,6 +757,8 @@ def extract_band_geotiff(
         Preserved parameter for pipeline uniformity. Default is "nm".
     tolerance : float, optional
         Preserved parameter for pipeline uniformity. Default is None.
+    chunk_size:int, optional
+        The size of the chunks of the final xarray/DASK array.
     rhow_flag : bool, optional
         If True, and flag_toa is False, incoming data arrays are divided by Pi 
         to convert hemispherical surface reflectance into standard Rrs. Default is False.
@@ -863,7 +875,7 @@ def extract_band_geotiff(
     # Systematically write the CRS structure to the final array
     da_final = da_final.rio.write_crs(crs_detected)
 
-    return da_final.chunk({"band": -1, "y": 100, "x": 100})  # Chunking for dask parallelism
+    return da_final.chunk({"band": -1, "y": chunk_size, "x": chunk_size})  # Chunking for dask parallelism
 
 
 def extract_sentinel2_default(
@@ -871,6 +883,7 @@ def extract_sentinel2_default(
     sensor: str = "MSI",
     bands=None,
     target_resolution: int = 20,
+    chunk_size: int = 400,
 ) -> xr.DataArray:
     """
     Direct Sentinel-2 .SAFE archive ingest sub-module. Resamples all bands on-the-fly 
@@ -886,6 +899,8 @@ def extract_sentinel2_default(
         Target band names to isolate (e.g., ['B02', 'B03', 'B04', 'B8A']).
     target_resolution : int, optional
         The uniform output spatial resolution in meters. Default is 20.
+    chunk_size:int, optional
+        The size of the chunks of the final xarray/DASK array.
 
     Returns
     -------
@@ -1008,7 +1023,7 @@ def extract_sentinel2_default(
     # Systematically register the spatial projection coordinate system
     da_final = da_final.rio.write_crs(crs_detected)
 
-    return da_final.chunk({"band": -1, "y": 100, "x": 100})  # Chunking for dask parallelism
+    return da_final.chunk({"band": -1, "y": chunk_size, "x": chunk_size})  # Chunking for dask parallelism
 
 
 def extract_satellite_data(
@@ -1018,6 +1033,7 @@ def extract_satellite_data(
     json_metadata_path: Optional[Union[str, Path]] = None,
     wavelength_unit: str = "nm",
     tolerance: Optional[float] = None,
+    chunk_size: int = 400,
     rhow_flag: bool = False,
     flag_toa: bool = False,
     verbose: bool = False,
@@ -1046,6 +1062,8 @@ def extract_satellite_data(
         Default is "nm".
     tolerance : float, optional
         Acceptable coordinate search filter window width radius. Default is None.
+    chunk_size:int, optional
+        The size of the chunks of the final xarray/DASK array.
     rhow_flag : bool, optional
         If True, and flag_toa is False, incoming surface reflectance data matrices 
         are divided by Pi where necessary to yield standardized Remote-sensing 
@@ -1078,9 +1096,11 @@ def extract_satellite_data(
         arguments when processing multi-band image files, or if format structures 
         cannot be recognized.
     """
-    # ------------------------------------------------------------------
+    # Ensure that the chunk size is valid
+    if chunk_size <= 0:
+        raise ValueError(f"The chunk size must be a positive integer. Instead got {chunk_size}")
+
     # Validate Sensor Support
-    # ------------------------------------------------------------------
     if not check_sensor_availability(sensor):
         raise ValueError(
             f"Requested platform sensor '{sensor}' is currently unsupported or "
@@ -1094,17 +1114,30 @@ def extract_satellite_data(
 
     # 1. Directory Input -> Process individual band GeoTIFF stack folder
     if path_obj.is_dir():
-        if verbose:
-            print(f"Directory source detected. Delegating to extract_band_geotiff for sensor {sensor}: {path_obj.name}")
-        return extract_band_geotiff(
-            file_path=path_obj,
-            bands=bands,
-            sensor=sensor,
-            wavelength_unit=wavelength_unit,
-            tolerance=tolerance,
-            rhow_flag=rhow_flag,
-            flag_toa=flag_toa,
-        )
+        if sensor == "MSI" and flag_toa:
+            if verbose:
+                print(f"Directory source detected. For sensor {sensor}: {path_obj.name} and TOA indicated assuming Copernicus default")
+            return extract_sentinel2_default(
+                    file_path=path_obj,
+                    sensor=sensor,
+                    bands=bands,
+                    target_resolution=20,
+                    chunk_size=chunk_size,
+                )
+
+        else:    
+            if verbose:
+                print(f"Directory source detected. Delegating to extract_band_geotiff for sensor {sensor}: {path_obj.name}")
+            return extract_band_geotiff(
+                file_path=path_obj,
+                bands=bands,
+                sensor=sensor,
+                wavelength_unit=wavelength_unit,
+                tolerance=tolerance,
+                chunk_size=chunk_size,
+                rhow_flag=rhow_flag,
+                flag_toa=flag_toa,
+            )
 
     # 2. NetCDF File Input -> Process SeaDAS level-2 satellite variables
     if path_obj.suffix.lower() in [".nc", ".nc4", ".hdf", ".h5"]:
@@ -1115,6 +1148,7 @@ def extract_satellite_data(
             sensor=sensor,
             bands=bands,
             wavelength_unit=wavelength_unit,
+            chunk_size=chunk_size,
             flag_toa=flag_toa,
             verbose=verbose,
         )
@@ -1135,6 +1169,7 @@ def extract_satellite_data(
             bands=bands,
             wavelength_unit=wavelength_unit,
             tolerance=tolerance,
+            chunk_size=chunk_size,
             rhow_flag=rhow_flag,
             flag_toa=flag_toa,
         )
