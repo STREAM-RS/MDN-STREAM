@@ -40,6 +40,40 @@ supported_models = {
 }
 
 
+
+# THE CENTRAL REGISTRY (Define once at the top of your script)
+IMAGERY_REGISTRY = {
+    ("HICO", "09-08-2014", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/0i6b4j9m29ilyip20y8k37kjzorra98k.nc"
+    },
+    ("OLI", "03-16-2019", "San Francisco Bay"): {
+        "link": "https://nasagov.box.com/shared/static/3m9u778rzlnbs0bftm1o2527ctigg4vf.nc",
+        "rgb_link": "https://nasagov.box.com/shared/static/iekn2w8tjygvh66o8e1uiwsgq42hipzu.png"
+    },
+    ("OLCI", "08-29-2016", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/96yy3e4d89clyaeixpgsj31lcgjbhbx6.nc",
+        "rgb_link": "https://nasagov.box.com/shared/static/6e30vvypp0ryy43u3yh2tenh5fy766ac.png"
+    },
+    ("OLCI", "06-08-2018", "Utah Lake"): {
+        "link": "https://nasagov.box.com/shared/static/ksq9yqgfhu5ae4rffakjdgv6v66tcral.nc",
+        "rgb_link": "https://nasagov.box.com/shared/static/zz68knzmjfjkzy7u5hkmrlb7i1y10rv3.png"
+    },
+    ("OLCI", "03-16-2019", "San Francisco Bay"): {
+        "link": "https://nasagov.box.com/shared/static/klco8ktabzboixnqeghtc9syms7j9q07.nc",
+        "rgb_link": "https://nasagov.box.com/shared/static/qcsexizc55g3hxl3ez29pzr01gvrrpcg.png"
+    },
+    ("PACE", "05-31-2024", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/sk8bunpkvltneyh3ar4at9d9c4rjr29e.nc"
+    },
+    ("PACE", "06-12-2024", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/wq426gu1a3tfae2qa5t3thj74xhj67ij.nc"
+    },
+    ("PACE", "09-16-2024", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/5bmlcmrc8fy51610hpdfrhr6g7sg9bwy.nc"
+    }
+}
+
+
 def current_support():
     ctr = 1
     for key in supported_models:
@@ -56,7 +90,7 @@ def uncompress(path, overwrite=False):
                 zf.extractall(path)
 
 
-def download_example_imagery(sensor, date, location, dest=None):
+"""def download_example_imagery(sensor, date, location, dest=None):
     rgb_link = ''
     if sensor == "HICO" and date == "09-08-2014" and location == "Lake Erie":
         link = "https://nasagov.box.com/shared/static/0i6b4j9m29ilyip20y8k37kjzorra98k.nc"
@@ -95,7 +129,53 @@ def download_example_imagery(sensor, date, location, dest=None):
     # with zipfile.ZipFile(dest, 'r') as zf:
     # zf.extractall(Path(os.getcwd() + "/example_imagery/"))
 
-    return dest
+    return dest"""
+
+
+# FUNCTION TO PRINT COMPOSITIONS
+def print_available_imagery():
+    """Prints a clean summary table of all available sensor datasets."""
+    print(f"{'SENSOR':<10} | {'DATE':<12} | {'LOCATION':<20}")
+    print("-" * 50)
+    
+    # .keys() gives us the tuples: (sensor, date, location)
+    for sensor, date, location in sorted(IMAGERY_REGISTRY.keys()):
+        print(f"{sensor:<10} | {date:<12} | {location:<20}")
+
+
+
+# FUNCTION TO DOWNLOAD IMAGERY
+
+def download_example_imagery(sensor: str, date: str, location: str, dest=None) -> str:
+    """Download example satellite imagery and optional RGB quicklooks."""
+    
+    # Check if the requested combo exists in our global registry
+    key = (sensor, date, location)
+    if key not in IMAGERY_REGISTRY:
+        raise ValueError(f"No images found for {location} from the {sensor} sensor on {date}")
+        
+    image_meta = IMAGERY_REGISTRY[key]
+    link = image_meta["link"]
+    rgb_link = image_meta.get("rgb_link") # Returns None cleanly if missing
+
+    # Resolve paths cleanly
+    base_dir = Path(dest) if dest is not None else Path.cwd()
+    target_dir = base_dir / "data" / "example_imagery" / sensor / date / location
+    dest_nc = target_dir / "sat_cube.nc"
+    dest_png = target_dir / "sat_rgb.png"
+
+    # Execute downloads if missing
+    if not dest_nc.exists():
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Downloading NetCDF image cube to {dest_nc}...")
+        subprocess.run(["curl", "-L", link, "-o", str(dest_nc)], check=True)
+        
+        if rgb_link:
+            print(f"Downloading RGB quicklook to {dest_png}...")
+            subprocess.run(["curl", "-L", rgb_link, "-o", str(dest_png)], check=True)
+            
+    return str(dest_nc)    
 
 
 def download_weights(model_path_name):

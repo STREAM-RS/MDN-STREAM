@@ -13,12 +13,15 @@ Email:                  arun.saranathan@ssaihq.com/
 
 import numpy as np
 import xarray as xr
+import pandas as pd
 import dask
 from dask.diagnostics import ProgressBar
 from dask import array as da
+import tensorflow as tf
 
 from typing import Optional, Tuple, Union, List, Dict
 import re
+import gc
 
 from .meta import get_sensor_bands
 from .parameters import get_args
@@ -428,70 +431,113 @@ def map_cube_mdn_chunk(
     img_chunk_np = np.asarray(img_chunk_t.data)  # Safely coerces the Dask chunk to a local NumPy array
 
     # 2. Extract metadata parameters safely
-    n_rounds = args.get("n_rounds", args["n_rounds"]) if isinstance(args, dict) else args.n_rounds
+    n_rounds = (args.get("n_rounds", args["n_rounds"])
+        if isinstance(args, dict)
+        else args.n_rounds
+    )
     n_models = 1 if op_mode == "select" else n_rounds
-    no_data_val = args.get("no_data", args["no_data"]) if isinstance(args, dict) else args.no_data
+    no_data_val = (args.get("no_data_val", args.get("no_data", -9999.0))
+        if isinstance(args, dict)
+        else getattr(args, "no_data_val", getattr(args, "no_data", -9999.0))
+    )
+
+    # -------------------------------------------------------------------------
+    # In-place Array Cleaning on img_chunk_np
+    # -------------------------------------------------------------------------
+    # Drop +/- Inf values up front
+    img_chunk_np[np.isinf(img_chunk_np)] = np.nan
+
+    # Replace negative values with no_data_val directly on img_chunk_np
+    img_chunk_np[img_chunk_np < 0] = no_data_val
 
     # 3. Initialize blank output structures using the correct 'no_data' value
-    img_preds = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs), dtype=np.float32)
-    
+    img_preds = no_data_val * np.ones(
+        (n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs),
+        dtype=np.float32,
+    )
+
     if return_uncert:
-        img_uncert_lb = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs), dtype=np.float32)
-        img_uncert_ub = no_data_val * np.ones((n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs), dtype=np.float32)
-    
-    # 4. Create water mask
+        img_uncert_lb = no_data_val * np.ones(( n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs,), dtype=np.float32,)
+        img_uncert_ub = no_data_val * np.ones(( n_models, img_chunk_np.shape[0], img_chunk_np.shape[1], n_outputs,), dtype=np.float32,)
+
+    #  Create water mask
     if land_mask:
         img_mask = mask_land(img_chunk_np, wvl_bands, threshold=landmask_threshold)
     else:
-        #img_mask = np.isnan(np.min(img_chunk_np, axis=2)).astype(float)
+        # img_mask = np.isnan(np.min(img_chunk_np, axis=2)).astype(float)
         img_mask = np.all(np.isnan(img_chunk_np), axis=2).astype(float)
 
-    bool_mask = (img_mask == 0)
+    bool_mask = img_mask == 0
     water_pixels = np.where(bool_mask)
     water_spectra = img_chunk_np[bool_mask]
 
-    # First filter: Remove spectra with majority invalid/negative values
-    maj_neg = (water_spectra < 1e-6).sum(axis=1) > 5
+    # First filter: Remove spectra with majority invalid/don't-care values
+    maj_neg = ((water_spectra == no_data_val) | (water_spectra < 1e-6)).sum(axis=1) > 5
     water_spectra = water_spectra[~maj_neg]
     water_pixels = tuple(p[~maj_neg] for p in water_pixels)
-    
 
-    # Second filter: Prepare spectra and drop any remaining NaNs/Infs 
+    # Second filter: Prepare spectra and drop any remaining NaNs
     water_final = np.ma.masked_invalid(water_spectra).reshape((-1, water_spectra.shape[-1]))
     valid_mask = ~np.any(water_final.mask, axis=1)
-    
+
     water_final = water_final[valid_mask]
     water_pixels = tuple(p[valid_mask] for p in water_pixels)
 
+    if isinstance(water_final, np.ma.MaskedArray):
+        water_final = water_final.filled(no_data_val)
+
+    # Also since the MDN expects positive values replace negatives with 1.e-6
+    water_final[water_final < 1.e-6] = 1.e-6
+
     # Build dynamic output dict base
-    data_vars = {
-        "predictions": (("model", "y", "x", "output"), img_preds)
-    }
+    data_vars = {"predictions": (("model", "y", "x", "output"), img_preds)}
 
     # If we have valid water pixels, process them through the MDN model
     if water_final.size > 0:
+        sensor_str = args["sensor"] if isinstance(args, dict) else args.sensor
+
         if return_uncert:
             preds, uncert, _ = get_spectral_preds(
-                test_x=water_final, sensor=args.sensor, products=target_products, op_mode=op_mode,
-                return_uncert=return_uncert, uncert_mode="limits", progress_vis=False
-            )            
+                test_x=water_final,
+                sensor=sensor_str,
+                products=target_products,
+                op_mode=op_mode,
+                return_uncert=return_uncert,
+                uncert_mode="limits",
+                progress_vis=False,
+            )
         else:
             preds, _ = get_spectral_preds(
-                test_x=water_final, sensor=args.sensor, products=target_products, op_mode=op_mode,
-                return_uncert=return_uncert, uncert_mode="limits", progress_vis=False
-            ) 
+                test_x=water_final,
+                sensor=sensor_str,
+                products=target_products,
+                op_mode=op_mode,
+                return_uncert=return_uncert,
+                uncert_mode="limits",
+                progress_vis=False,
+            )
 
         # Re-assign the predictions back into the spatial grid coordinate slices
-        img_preds[:, water_pixels[0], water_pixels[1], :] = preds['pred']
+        img_preds[:, water_pixels[0], water_pixels[1], :] = preds["pred"]
         data_vars["predictions"] = (("model", "y", "x", "output"), img_preds)
-        
+
         if return_uncert:
-            img_uncert_lb[:, water_pixels[0], water_pixels[1], :] = uncert["low_lim"]
-            img_uncert_ub[:, water_pixels[0], water_pixels[1], :] = uncert["high_lim"]
+            img_uncert_lb[:, water_pixels[0], water_pixels[1], :] = uncert[
+                "low_lim"
+            ]
+            img_uncert_ub[:, water_pixels[0], water_pixels[1], :] = uncert[
+                "high_lim"
+            ]
 
     if return_uncert:
-        data_vars["uncertainty_low"] = (("model", "y", "x", "output"), img_uncert_lb)
-        data_vars["uncertainty_high"] = (("model", "y", "x", "output"), img_uncert_ub)
+        data_vars["uncertainty_low"] = (
+            ("model", "y", "x", "output"),
+            img_uncert_lb,
+        )
+        data_vars["uncertainty_high"] = (
+            ("model", "y", "x", "output"),
+            img_uncert_ub,
+        )
 
     # =================================================================
     # CRITICAL FIX: DO NOT DEFINE SPATIAL COORDINATES HERE AT ALL
@@ -501,8 +547,14 @@ def map_cube_mdn_chunk(
         coords={
             "model": np.arange(n_models),
             "output": np.arange(n_outputs),
-        }
+        },
     )
+
+    # Explicitly clear temporary arrays before returning
+    del img_chunk_np, water_spectra, water_final
+    gc.collect()
+    tf.keras.backend.clear_session()
+
     return ds_chunk
 
 
@@ -556,7 +608,7 @@ def map_cube_mdn(
     #  Extract configuration metadata
     wvl_bands = get_sensor_bands(sensor)
     n_rounds = args.get("n_rounds", args["n_rounds"]) if isinstance(args, dict) else args.n_rounds
-    n_outputs = len(products.split(","))
+    # n_outputs = len(products.split(","))
     n_models = 1 if op_mode == "select" else n_rounds
     no_data_val = args.get("no_data", args["no_data"]) if isinstance(args, dict) else args.no_data
 
@@ -564,6 +616,24 @@ def map_cube_mdn(
     dummy_pixel = 0.01 * np.ones((1, len(wvl_bands)))
     _, op_slices =  get_spectral_preds(test_x=dummy_pixel, sensor= sensor, products=products, op_mode=op_mode, return_uncert=False, uncert_mode="limits",
                                         progress_vis=False) 
+
+    # Find the length of the output vector
+    n_outputs = 0
+    for key in op_slices:
+        orig_slice = op_slices[key]
+        
+        # Convert slice, tuple, list, or single integer to a flat list of column indices
+        if isinstance(orig_slice, slice):
+            start = orig_slice.start if orig_slice.start is not None else 0
+            stop = orig_slice.stop
+            feature_indices = list(range(start, stop))
+        elif isinstance(orig_slice, (tuple, list)):
+            feature_indices = list(orig_slice)
+        else:
+            feature_indices = [orig_slice]
+        
+        # Track the new shifted slice bounds
+        n_outputs += len(feature_indices)
 
     # Create dummy arrays for building the template
     dummy_preds = np.empty((n_models, len(img_data.y), len(img_data.x), n_outputs), dtype=np.float32)
@@ -636,13 +706,51 @@ def map_cube_mdn(
     # Re-assign the true global coordinates back to the lazy dataset before computing
     final_lazy_ds = lazy_result_ds.assign_coords(global_coords)
 
-    # 6. Execute computation with visual feedback
+    # Execute computation with visual feedback
     if progress_vis:
         from dask.diagnostics import ProgressBar
         print("Computing MDN predictions across chunks...")
         with ProgressBar():
-            final_ds = final_lazy_ds.compute()
+            final_ds = final_lazy_ds.compute(scheduler="single-threaded")
     else:
-        final_ds = final_lazy_ds.compute()
+        final_ds = final_lazy_ds.compute(scheduler="single-threaded")
+
+    # EXTRACT SPATIAL EXTENT AS A TUPLE
+    lon_min = float(final_ds.coords["longitude"].min())
+    lon_max = float(final_ds.coords["longitude"].max())
+    lat_min = float(final_ds.coords["latitude"].min())
+    lat_max = float(final_ds.coords["latitude"].max())
+
+    # Get the wavelengths of spectral products
+    aph_wvl, adag_wvl = np.asarray([]), np.asarray([])
+    for sp_prod in ["aph", "ad", "ag"]:
+        if sp_prod in products:
+            if sp_prod == "aph":
+                aph_wvl = np.asarray(get_sensor_bands((sensor.split("-")[0] + '-aph')))
+            else:
+                adag_wvl= np.asarray(get_sensor_bands((sensor.split("-")[0] + '-aph')))
+                break                          # need to check only one of ad or ag
+
+
+    # ADD METADATA ATTRIBUTES HERE
+    final_ds.attrs.update({
+        "title": "MDN Satellite Product Predictions",
+        "sensor": sensor,
+        "target_products": products,
+        "operation_mode": op_mode,
+        "land_mask_applied": str(land_mask),
+        "land_mask_threshold": landmask_threshold,
+        "scaler_mode": scaler_mode,
+        "no_data_value": no_data_val,
+        "extent": [lon_min, lon_max, lat_min, lat_max],
+        "history": f"Created on {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')} using map_cube_mdn"
+    })
+
+    # IF NEEDED add the wavelengths associated with the spectral components
+    if aph_wvl.size !=0:
+        final_ds.attrs["aph_wavelengths"] = aph_wvl.tolist()
+
+    if adag_wvl.size !=0:
+        final_ds.attrs["adag_wavelengths"] = adag_wvl.tolist()
 
     return final_ds, op_slices

@@ -729,36 +729,62 @@ def overlay_rgb_mdnProducts(rgb_img, model_preds, extent, img_uncert=None, produ
         return fig1
 
 
-def overlay_rgb_mdn_preds_limits(rgb_img, model_preds, extent, img_uncert_low, img_uncert_high,
-                                 product_name='Parameter', figsize=(18, 6), 
-                                 pred_ticks=[-1, 0, 1, 2], pred_uncert_ticks=[-1, 0, 1, 2],
-                                 ipython_mode=False,  ASPECT='equal', BIGGER_SIZE=12):
-    """
-    This function can be used to overlay the MDN-prediction maps (along with lower and upper uncertainty limits)
-    over the RGB composite of a satellite image for display in a three-column panel.
+def overlay_rgb_mdn_preds_limits(
+    rgb_img,
+    model_preds,
+    extent,
+    img_uncert_low,
+    img_uncert_high,
+    product_name="Parameter",
+    figsize=(18, 6),
+    pred_ticks=[-1, 0, 1, 2],
+    pred_uncert_ticks=[-1, 0, 1, 2],
+    apply_log=True,
+    ipython_mode=False,
+    ASPECT="equal",
+    BIGGER_SIZE=12,
+):
+    """This function can be used to overlay the MDN-prediction maps (along with
+    lower and upper uncertainty limits) over the RGB composite of a satellite
+    image for display in a three-column panel.
 
-    :param rgb_img: [np.ndarray, rows X cols X 3]
-    The RGB composite of the scene
+    Parameters
+    ----------
+    rgb_img : [np.ndarray, rows X cols X 3]
+        The RGB composite of the scene
+    model_preds : [np.ndarray, rows X cols]
+        The MDN predictions for that location
+    extent : [np.array]
+        A description of the extent of the location
+    img_uncert_low : [np.ndarray, rows X cols]
+        The lower uncertainty limit associated with the MDN predictions for
+        that location
+    img_uncert_high : [np.ndarray, rows X cols]
+        The upper uncertainty limit associated with the MDN predictions for
+        that location
+    product_name : [str], optional (Default: "Parameter")
+        The name of the product that has been predicted
+    figsize : [tuple], optional (Default: (18, 6))
+        Figure dimensions
+    pred_ticks : [list], optional (Default: [-1, 0, 1, 2])
+        Tick marks for the prediction colorbar
+    pred_uncert_ticks : [list], optional (Default: [-1, 0, 1, 2])
+        Tick marks for the uncertainty colorbars
+    apply_log : [bool], optional (Default: True)
+        If True, applies log10 transformation to the input data before plotting
+        and scales colorbar tick labels exponentially. If False, plots raw data
+        and displays standard tick labels.
+    ipython_mode : [bool], optional (Default: False)
+        In ipython_mode, the images are auto displayed and figure is not returned
+    ASPECT : [str], optional (Default: 'equal')
+        Aspect ratio for display
+    BIGGER_SIZE : [int], optional (Default: 12)
+        Font size for titles
 
-    :param model_preds: [np.ndarray, rows X cols]
-    The MDN predictions for that location
-
-    :param extent: [np.array]
-    A description of the extent of the location
-
-    :param img_uncert_low: [np.ndarray, rows X cols]
-    The lower uncertainty limit associated with the MDN predictions for that location
-
-    :param img_uncert_high: [np.ndarray, rows X cols]
-    The upper uncertainty limit associated with the MDN predictions for that location
-
-    :param product_name: (string) (Default: "Parameter")
-    The name of the product that has been predicted
-
-    :param ipython_mode:[bool] (Default: False)
-    In the ipython_mode, the images are auto displayed and figure is not returned by the function
-
-    :return: fig1: A figure with appropriate plots
+    Returns
+    -------
+    fig1 : [matplotlib.figure.Figure or None]
+        A figure with appropriate plots if ipython_mode is False.
     """
 
     # --- Xarray DataArray Guard ---
@@ -780,39 +806,77 @@ def overlay_rgb_mdn_preds_limits(rgb_img, model_preds, extent, img_uncert_low, i
         img_uncert_high = img_uncert_high.squeeze(axis=2)
 
     # --- Data Property Assertions ---
-    assert len(extent) == 4, "Need to provide the spatial extent of the image to be displayed."
-    assert rgb_img.shape[2] == 3, f"The <rgb_img> must have exactly 3 bands. Found shape: {rgb_img.shape}"
-    
+    assert (
+        len(extent) == 4
+    ), "Need to provide the spatial extent of the image to be displayed."
+    assert (
+        rgb_img.shape[2] == 3
+    ), f"The <rgb_img> must have exactly 3 bands. Found shape: {rgb_img.shape}"
+
     spatial_shape = rgb_img.shape[:2]
-    assert model_preds.shape[:2] == spatial_shape, f"Predictions {model_preds.shape[:2]} must match RGB {spatial_shape} shape."
-    assert img_uncert_low.shape[:2] == spatial_shape, f"Lower uncertainty {img_uncert_low.shape[:2]} must match RGB {spatial_shape} shape."
-    assert img_uncert_high.shape[:2] == spatial_shape, f"Upper uncertainty {img_uncert_high.shape[:2]} must match RGB {spatial_shape} shape."
-    
-    assert len(model_preds.shape) == 2, "model_preds must be a 2D array (y, x)."
-    assert len(img_uncert_low.shape) == 2, "img_uncert_low must be a 2D array (y, x)."
-    assert len(img_uncert_high.shape) == 2, "img_uncert_high must be a 2D array (y, x)."
+    assert (
+        model_preds.shape[:2] == spatial_shape
+    ), f"Predictions {model_preds.shape[:2]} must match RGB {spatial_shape} shape."
+    assert (
+        img_uncert_low.shape[:2] == spatial_shape
+    ), f"Lower uncertainty {img_uncert_low.shape[:2]} must match RGB {spatial_shape} shape."
+    assert (
+        img_uncert_high.shape[:2] == spatial_shape
+    ), f"Upper uncertainty {img_uncert_high.shape[:2]} must match RGB {spatial_shape} shape."
+
+    assert (
+        len(model_preds.shape) == 2
+    ), "model_preds must be a 2D array (y, x)."
+    assert (
+        len(img_uncert_low.shape) == 2
+    ), "img_uncert_low must be a 2D array (y, x)."
+    assert (
+        len(img_uncert_high.shape) == 2
+    ), "img_uncert_high must be a 2D array (y, x)."
+
+    # --- Data Processing & Label Generation ---
+    if apply_log:
+        plot_low = np.log10(img_uncert_low + 1.0e-6)
+        plot_preds = np.log10(model_preds + 1.0e-6)
+        plot_high = np.log10(img_uncert_high + 1.0e-6)
+        mask_threshold = -5.9
+
+        # Exponential tick labels for log scale
+        pred_labels = [f"{(10 ** (i)):.2f}" for i in pred_ticks]
+        uncert_labels = [f"{(10 ** (i)):.2f}" for i in pred_uncert_ticks]
+    else:
+        plot_low = img_uncert_low
+        plot_preds = model_preds
+        plot_high = img_uncert_high
+        mask_threshold = 0.0
+
+        # Standard linear tick labels
+        pred_labels = [f"{i:.2f}" if isinstance(i, float) else str(i) for i in pred_ticks]
+        uncert_labels = [f"{i:.2f}" if isinstance(i, float) else str(i) for i in pred_uncert_ticks]
 
     # --- Setup 3-Column Figure ---
-    fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=figsize, sharex=True, sharey=True)
+    fig1, (ax1, ax2, ax3) = plt.subplots(
+        ncols=3, figsize=figsize, sharex=True, sharey=True
+    )
     fig1.patch.set_visible(True)
     ord_val = 0
-
-    # Convert values to log10 scale
-    log_low = np.log10(img_uncert_low + 1.e-6)
-    log_preds = np.log10(model_preds + 1.e-6)
-    log_high = np.log10(img_uncert_high + 1.e-6)
-
-    # Label generation
-    pred_labels = [f'{(10 ** (i)):.2f}' for i in pred_ticks]
-    uncert_labels = [f'{(10 ** (i)):.2f}' for i in pred_uncert_ticks]
 
     # ==========================================
     # Column 1: Lower Limit (Left)
     # ==========================================
     ax1.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
-    img_low = ax1.imshow(np.ma.masked_where(log_low <= -5.9, log_low), cmap=cmap,
-                         extent=extent, aspect=ASPECT, zorder=ord_val + 1)
-    ax1.set_title(f"Lower Limit ({product_name})", fontsize=BIGGER_SIZE, fontweight="bold")
+    img_low = ax1.imshow(
+        np.ma.masked_where(plot_low <= mask_threshold, plot_low),
+        cmap=cmap,
+        extent=extent,
+        aspect=ASPECT,
+        zorder=ord_val + 1,
+    )
+    ax1.set_title(
+        f"Lower Limit ({product_name})",
+        fontsize=BIGGER_SIZE,
+        fontweight="bold",
+    )
     img_low.set_clim(pred_uncert_ticks[0], pred_uncert_ticks[-1])
     colorbar(img_low, ticks_list=pred_uncert_ticks, lbl_list=uncert_labels)
 
@@ -820,9 +884,18 @@ def overlay_rgb_mdn_preds_limits(rgb_img, model_preds, extent, img_uncert_low, i
     # Column 2: Model Predictions (Middle)
     # ==========================================
     ax2.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
-    img_mid = ax2.imshow(np.ma.masked_where(log_preds <= -5.9, log_preds), cmap=cmap,
-                         extent=extent, aspect=ASPECT, zorder=ord_val + 1)
-    ax2.set_title(f"MDN Predictions ({product_name})", fontsize=BIGGER_SIZE, fontweight="bold")
+    img_mid = ax2.imshow(
+        np.ma.masked_where(plot_preds <= mask_threshold, plot_preds),
+        cmap=cmap,
+        extent=extent,
+        aspect=ASPECT,
+        zorder=ord_val + 1,
+    )
+    ax2.set_title(
+        f"MDN Predictions ({product_name})",
+        fontsize=BIGGER_SIZE,
+        fontweight="bold",
+    )
     img_mid.set_clim(pred_ticks[0], pred_ticks[-1])
     colorbar(img_mid, ticks_list=pred_ticks, lbl_list=pred_labels)
 
@@ -830,9 +903,18 @@ def overlay_rgb_mdn_preds_limits(rgb_img, model_preds, extent, img_uncert_low, i
     # Column 3: Upper Limit (Right)
     # ==========================================
     ax3.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
-    img_high = ax3.imshow(np.ma.masked_where(log_high <= -5.9, log_high), cmap=cmap,
-                          extent=extent, aspect=ASPECT, zorder=ord_val + 1)
-    ax3.set_title(f"Upper Limit ({product_name})", fontsize=BIGGER_SIZE, fontweight="bold")
+    img_high = ax3.imshow(
+        np.ma.masked_where(plot_high <= mask_threshold, plot_high),
+        cmap=cmap,
+        extent=extent,
+        aspect=ASPECT,
+        zorder=ord_val + 1,
+    )
+    ax3.set_title(
+        f"Upper Limit ({product_name})",
+        fontsize=BIGGER_SIZE,
+        fontweight="bold",
+    )
     img_high.set_clim(pred_uncert_ticks[0], pred_uncert_ticks[-1])
     colorbar(img_high, ticks_list=pred_uncert_ticks, lbl_list=uncert_labels)
 

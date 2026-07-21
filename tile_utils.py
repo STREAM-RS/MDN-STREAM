@@ -1178,3 +1178,104 @@ def extract_satellite_data(
         f"Unsupported file format file structure signature: '{path_obj.suffix}'. "
         f"Unable to route target data handling pipelines automatically."
     )
+
+
+def export_dataset(
+    ds: Union[xr.Dataset, xr.DataArray],
+    output_path: Union[str, Path],
+    file_format: str = "netcdf",
+    complevel: int = 5,
+    driver_options: Optional[dict] = None,
+) -> None:
+    """Exports an xarray Dataset or DataArray to specified geospatial or array formats.
+
+    Parameters
+    ----------
+    ds : [xr.Dataset or xr.DataArray]
+        The input xarray object containing spatial coordinates.
+    output_path : [str or Path]
+        Destination file path or directory (e.g., 'output.nc', 'output.tif',
+        'output.zarr').
+    file_format : [str], optional
+        Format to save: 'netcdf' (or 'nc'), 'geotiff' (or 'tif'), or 'zarr'.
+        Default is 'netcdf'.
+    complevel : [int], optional
+        Compression level (1-9) for NetCDF/Zarr output. Default is 5.
+    driver_options : [dict], optional
+        Additional encoding or format-specific parameters passed to the
+        underlying writer. Default is None.
+
+    Returns
+    -------
+    None
+    """
+    # Convert DataArray to Dataset if necessary
+    if isinstance(ds, xr.DataArray):
+        var_name = ds.name or "variable"
+        ds = ds.to_dataset(name=var_name)
+
+    fmt = file_format.lower().strip()
+    driver_options = driver_options or {}
+
+    out_path = Path(output_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # -------------------------------------------------------------------------
+    # 1. NetCDF Export (using zlib compression)
+    # -------------------------------------------------------------------------
+    if fmt in ["netcdf", "nc"]:
+        encoding = {
+            var: {
+                "zlib": True,
+                "complevel": complevel,
+                "shuffle": True,
+            }
+            for var in ds.data_vars
+        }
+        encoding.update(driver_options.get("encoding", {}))
+
+        ds.to_netcdf(out_path, encoding=encoding)
+        print(
+            f"Successfully saved NetCDF (complevel={complevel}): {out_path}"
+        )
+
+    # -------------------------------------------------------------------------
+    # 2. GeoTIFF Export (via rioxarray)
+    # -------------------------------------------------------------------------
+    elif fmt in ["geotiff", "tiff", "tif"]:
+        if not hasattr(ds, "rio"):
+            raise ImportError(
+                "rioxarray is required for GeoTIFF export. Ensure it is installed (`pip install rioxarray`)."
+            )
+
+        rio_kwargs = {
+            "driver": "GTiff",
+            "compress": "DEFLATE",
+            "predictor": 2 if "float" in str(ds.dtypes) else 1,
+        }
+        rio_kwargs.update(driver_options)
+
+        ds.rio.to_raster(out_path, **rio_kwargs)
+        print(f"Successfully saved GeoTIFF: {out_path}")
+
+    # -------------------------------------------------------------------------
+    # 3. Zarr Export (Cloud-native / High-Performance Parallel Format)
+    # -------------------------------------------------------------------------
+    elif fmt == "zarr":
+        import numcodecs
+
+        compressor = numcodecs.Blosc(
+            cname="zstd", clevel=complevel, shuffle=numcodecs.Blosc.BITSHUFFLE
+        )
+        encoding = {var: {"compressor": compressor} for var in ds.data_vars}
+        encoding.update(driver_options.get("encoding", {}))
+
+        ds.to_zarr(out_path, encoding=encoding, mode="w")
+        print(
+            f"Successfully saved Zarr store (complevel={complevel}): {out_path}"
+        )
+
+    else:
+        raise ValueError(
+            f"Unsupported format '{file_format}'. Supported formats are: 'netcdf', 'geotiff', 'zarr'."
+        )
