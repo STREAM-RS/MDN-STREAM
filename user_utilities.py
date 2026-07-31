@@ -33,7 +33,7 @@ min_in_out_val = 1e-6
 
 # If new default model is defined for a sensor this Dictionary needs to be updated.
 DEFAULT_SENSOR_PRODUCT_COMBINATIONS = {
-    "OLCI": 'chl,tss,cdom',
+    "OLCI": 'chl,tss,cdom,pc',
     "PACE-delivery": 'aph,chl,tss,pc,ad,ag,cdom',
     "SD8-cc_base": 'chl,secchi',
 }
@@ -77,25 +77,34 @@ def get_default_pipeline_kwargs(sensor, product):
     kwargs = None
 
     # Logic for OLCI Sensor
-    if sensor == "OLCI":
+    if sensor in ["S3A", 'S3B', 'OLCI']:
         max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
         if product == "chl":
             kwargs = {
                 'product': "chl",
                 'sat_bands': False,
                 'model_loc': "Weights_test",
-                'sensor': sensor,
+                'sensor': "OLCI",
                 'silent': True,
                 'model_uid': "39863a30bd3ea0c25f24a212564810cfc341ca66b6c10c8b464befac7fbf6a8f"
+            }
+        elif product=="chl,tss,cdom":
+            kwargs = {
+                'product': max_model_products,
+                'sat_bands': False,
+                'model_loc': "Weights",
+                'sensor': "OLCI",
+                'silent': True,
+                'model_uid': "73bf3ca36f95d13a38032a36f7565a992fa772af0833ad2f74b710b6df33eba2"
             }
         elif is_subset_product(product, max_model_products):
             kwargs = {
                 'product': max_model_products,
                 'sat_bands': False,
                 'model_loc': "Weights",
-                'sensor': sensor,
+                'sensor': 'S3A',
                 'silent': True,
-                'model_uid': "73bf3ca36f95d13a38032a36f7565a992fa772af0833ad2f74b710b6df33eba2"
+                'model_uid': "5a77d134c57e23dccf34fde5c1d19bffb278def934e2e51c2cbffa4bdac6e363"
             }
         else:
             raise ValueError(
