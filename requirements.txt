@@ -1,7 +1,6 @@
 dask==2025.10.0
 matplotlib==3.11.1
 netCDF4==1.7.2
-netCDF4==1.7.4
 numcodecs==0.16.3
 numpy==2.5.1
 packaging==26.2
