@@ -1,4 +1,8 @@
 import warnings
+import os
+
+# Enforce legacy Keras 2 engine for H5 model deserialization
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 

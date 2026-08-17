@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 from pathlib import Path
 import rasterio
@@ -10,6 +12,7 @@ import dask.array as da
 from rasterio.transform import xy
 from rasterio.enums import Resampling
 import dask
+
 
 import sys
 from typing import Union, Optional, List

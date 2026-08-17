@@ -6,6 +6,9 @@ Description:    This code file contains the helper functions needed to create hi
 
 Date Created:   September 2nd, 2024
 """
+import matplotlib
+matplotlib.use("Agg")
+
 import matplotlib as mpl
 import matplotlib.patheffects as pe
 import matplotlib.ticker as ticker

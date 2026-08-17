@@ -1,6 +1,22 @@
 import numpy as np
+import importlib
 
 from ._CustomTransformer import _CustomTransformer
+
+
+def deserialize_transformer(data):
+    """Recreate any sklearn TransformerMixin from serialized form."""
+    module_name, cls_name = data["class_path"].rsplit(".", 1)
+    module = importlib.import_module(module_name)
+    cls = getattr(module, cls_name)
+
+    transformer = cls(**data.get("params", {}))
+
+    # restore learned attributes
+    for attr, val in data.get("state", {}).items():
+        setattr(transformer, attr, np.array(val) if isinstance(val, list) else val)
+
+    return transformer
 
 
 class ExclusionTransformer(_CustomTransformer):
@@ -16,9 +32,19 @@ class ExclusionTransformer(_CustomTransformer):
         etc.
     '''
 
-    def __init__(self, exclude_slice, transformer, transformer_args=[], transformer_kwargs={}):
-        self.transformer = transformer(*transformer_args, **transformer_kwargs)
-        self.excl = exclude_slice
+    def __init__(self, excl, transformer, transformer_args=[], transformer_kwargs={}, keep=None):
+        if isinstance(transformer, dict) and transformer.get("_kind") == "SklearnTransformer":
+            transformer = deserialize_transformer(transformer)
+            self.transformer = transformer
+        else:
+            self.transformer = transformer(*transformer_args, **transformer_kwargs)
+
+        if isinstance(excl, dict) and excl.get("_kind") == "Slice":
+            self.excl = slice(excl["start"], excl["stop"], excl["step"])
+        else:
+            self.excl = excl
+
+        self.keep = keep
 
     def _fit(self, X, *args, **kwargs):
         cols = np.arange(X.shape[1])
