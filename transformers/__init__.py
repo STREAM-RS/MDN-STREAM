@@ -4,7 +4,7 @@ from .AUCTransformer import AUCTransformer
 from .BaggingColumnTransformer import BaggingColumnTransformer
 from .ColumnSelectionTransformer import ColumnSelectionTransformer
 from .DatasetMembershipTransformer import DatasetMembershipTransformer
-from .ExclusionTransformer import ExclusionTransformer
+from .ExclusionTransformer import ExclusionTransformer, deserialize_transformer
 from .IdentityTransformer import IdentityTransformer
 from .KBestTransformer import KBestTransformer
 from .LogTransformer import LogTransformer
