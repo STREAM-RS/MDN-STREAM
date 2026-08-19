@@ -1,4 +1,20 @@
 from sklearn.base import TransformerMixin
+import importlib
+import numpy as np
+
+def deserialize_transformer(data):
+    """Recreate any sklearn TransformerMixin from serialized form."""
+    module_name, cls_name = data["class_path"].rsplit(".", 1)
+    module = importlib.import_module(module_name)
+    cls = getattr(module, cls_name)
+
+    transformer = cls(**data.get("params", {}))
+
+    # restore learned attributes
+    for attr, val in data.get("state", {}).items():
+        setattr(transformer, attr, np.array(val) if isinstance(val, list) else val)
+
+    return transformer
 
 
 class _CustomTransformer(TransformerMixin):

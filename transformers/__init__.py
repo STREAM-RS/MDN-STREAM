@@ -4,14 +4,14 @@ from .AUCTransformer import AUCTransformer
 from .BaggingColumnTransformer import BaggingColumnTransformer
 from .ColumnSelectionTransformer import ColumnSelectionTransformer
 from .DatasetMembershipTransformer import DatasetMembershipTransformer
-from .ExclusionTransformer import ExclusionTransformer, deserialize_transformer
+from .ExclusionTransformer import ExclusionTransformer
 from .IdentityTransformer import IdentityTransformer
 from .KBestTransformer import KBestTransformer
 from .LogTransformer import LogTransformer
 from .NegLogTransformer import NegLogTransformer
 from .RatioTransformer import RatioTransformer
 from .TanhTransformer import TanhTransformer
-from ._CustomTransformer import _CustomTransformer
+from ._CustomTransformer import _CustomTransformer, deserialize_transformer
 from ..meta import get_sensor_bands
 from ..utils import using_feature
 

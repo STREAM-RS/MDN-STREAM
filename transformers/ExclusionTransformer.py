@@ -1,22 +1,7 @@
 import numpy as np
 import importlib
 
-from ._CustomTransformer import _CustomTransformer
-
-
-def deserialize_transformer(data):
-    """Recreate any sklearn TransformerMixin from serialized form."""
-    module_name, cls_name = data["class_path"].rsplit(".", 1)
-    module = importlib.import_module(module_name)
-    cls = getattr(module, cls_name)
-
-    transformer = cls(**data.get("params", {}))
-
-    # restore learned attributes
-    for attr, val in data.get("state", {}).items():
-        setattr(transformer, attr, np.array(val) if isinstance(val, list) else val)
-
-    return transformer
+from ._CustomTransformer import _CustomTransformer, deserialize_transformer
 
 
 class ExclusionTransformer(_CustomTransformer):
