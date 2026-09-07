@@ -33,9 +33,18 @@ min_in_out_val = 1e-6
 
 # If new default model is defined for a sensor this Dictionary needs to be updated.
 DEFAULT_SENSOR_PRODUCT_COMBINATIONS = {
-    "OLCI": 'chl,tss,cdom,pc',
+    "OLCI"         : 'chl,tss,cdom,pc',
     "PACE-delivery": 'aph,chl,tss,pc,ad,ag,cdom',
-    "SD8-cc_base": 'chl,secchi',
+    "EMIT"         : 'aph,chl,tss,pc,ad,ag,cdom',
+    "PRISM"        : 'aph,chl,tss,pc,ad,ag,cdom',
+    "AVIRISNG"     : 'aph,chl,tss,pc,ad,ag,cdom',
+    "PACE-delivery": 'aph,chl,tss,pc,ad,ag,cdom',
+    "PRISMA"       : 'aph,chl,tss,pc,ad,ag,cdom',
+    "HICO"         : 'aph,chl,tss,pc,ad,ag,cdom',
+    "MOD"          : 'Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667',
+    "VI"           : 'Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667',
+    "MERIS"        : 'Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667',
+    "SD8-cc_base"  : 'chl,secchi',
 }
 PRODUCT_PATTERN=  r'^[^\s,]+(,[^\s,]+)+$'
 
@@ -76,6 +85,36 @@ def get_default_pipeline_kwargs(sensor, product):
 
     kwargs = None
 
+    if sensor in ["MOD", 'MODA', 'MODT']:
+        max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
+        kwargs = {
+           'product': "Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667",
+           'sat_bands': False,
+           'model_loc': "Weights",
+           'sensor': "MOD",
+           'silent': True,
+           'model_uid': "16a3fb66d506d555444846b40f680ee76bfa36c7514940ab85b83884548e350c"
+       }
+    if sensor in ["VI"]:
+        max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
+        kwargs = {
+           'product': "Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667",
+           'sat_bands': False,
+           'model_loc': "Weights",
+           'sensor': "VI",
+           'silent': True,
+           'model_uid': "6f7262564d6e2a2deb3b3e433384f60398acc38e3a9712563e70445bc80ab924"
+       }
+    if sensor in ["MERIS"]:
+        max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
+        kwargs = {
+           'product': "Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667",
+           'sat_bands': False,
+           'model_loc': "Weights",
+           'sensor': "MERIS",
+           'silent': True,
+           'model_uid': "fadf7c51442969f4f9cde83fdad8a1b958a1dff1523f66fc331f376877e02b59"
+       }
     # Logic for OLCI Sensor
     if sensor in ["S3A", 'S3B', 'OLCI']:
         max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
@@ -132,8 +171,16 @@ def get_default_pipeline_kwargs(sensor, product):
     
     
     # Logic for PACE-delivery Sensor
-    elif sensor == "PACE-delivery":
+    elif sensor in ["PACE-delivery","EMIT","AVIRISNG","PRISM","HICO","PRISMA"]:
         max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
+        model_uid_dict = {
+                            "PACE-delivery":"6f2a6b07f6e8b5723a80c389456e13a6f17d7db02024a425f15f0b340fbb97e0",
+                            "EMIT"         :"a3fef49195d5c65f17ca3b34ba6563a41879aa7e15685b18d646d890f7c282b2",
+                            "PRISM"        :"4e4cecb75957e060e0caf70f751e6435dad5e391d04485f5376f061081eeec67",
+                            "AVIRISNG"     :"87e72ac535fd367718e019c3671deb665a999b5550a9caeb343a681afdf710a9",
+                            "PRISMA"       :"6041caec3d8c34771f9082740fc3cee1a16d3b1b21cfda0f245e615a0a01570d",
+                            "HICO"         :"b978ee38b759569c6c6860a6a875f23131cef5ecf5b93d0d67708cb408718c85",
+                            }
         if is_subset_product(product, max_model_products):
             kwargs = {
                 'allow_missing': False,
@@ -164,7 +211,7 @@ def get_default_pipeline_kwargs(sensor, product):
                 'min_in_out_val': min_in_out_val, 
                 'silent': True,
                 'no_data': -999.,
-                'model_uid': "6f2a6b07f6e8b5723a80c389456e13a6f17d7db02024a425f15f0b340fbb97e0",
+                'model_uid': model_uid_dict[sensor],
             }
 
             # Append wavelength metadata

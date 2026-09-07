@@ -7,6 +7,7 @@ import subprocess
 import sys
 import warnings
 import zipfile
+import shutil
 from datetime import datetime as dt
 from importlib import import_module
 from pathlib import Path
@@ -88,6 +89,19 @@ def uncompress(path, overwrite=False):
         if path.with_suffix('.zip').exists():
             with zipfile.ZipFile(path.with_suffix('.zip'), 'r') as zf:
                 zf.extractall(path)
+                
+        # path is 'name', nested_path looks for 'name/name'
+        nested_path = path / path.name
+        
+        # Check if the duplicate folder exists and is actually a directory
+        if nested_path.is_dir():
+            # Move all contents from 'name/name/*' up to 'name/'
+            for item in nested_path.iterdir():
+                # shutil.move handles both files and folders seamlessly
+                shutil.move(str(item), str(path))
+                
+            # Delete the now-empty nested 'name/name' directory
+            nested_path.rmdir()
 
 
 """def download_example_imagery(sensor, date, location, dest=None):
@@ -202,8 +216,16 @@ def download_weights(model_path_name):
                                                                              "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"],
         '3559908f0e198546e108084db62ba17b644bffe31d40adabfa9752cb43bcacbc': ["PACE-delivery",
                                                                              MDN_folder + 'PACE-delivery/3559908f0e198546e108084db62ba17b644bffe31d40adabfa9752cb43bcacbc.zip',
-                                                                             "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"]
-
+                                                                             "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"],
+        'a3fef49195d5c65f17ca3b34ba6563a41879aa7e15685b18d646d890f7c282b2': ["EMIT",
+                                                                             MDN_folder + 'EMIT/a3fef49195d5c65f17ca3b34ba6563a41879aa7e15685b18d646d890f7c282b2.zip',
+                                                                             "https://nasagov.box.com/shared/static/84z356o4z7rqcb9twvbrb3u4gykp7gqv.zip"],
+        '4e4cecb75957e060e0caf70f751e6435dad5e391d04485f5376f061081eeec67': ["PRISM",
+                                                                             MDN_folder + 'PRISM/4e4cecb75957e060e0caf70f751e6435dad5e391d04485f5376f061081eeec67.zip',
+                                                                             "https://nasagov.box.com/shared/static/karkt1amepy3keuzdfvy1yjb6685em9w.zip"],
+        '87e72ac535fd367718e019c3671deb665a999b5550a9caeb343a681afdf710a9': ["AVIRISNG",
+                                                                             MDN_folder + 'AVIRISNG/87e72ac535fd367718e019c3671deb665a999b5550a9caeb343a681afdf710a9.zip',
+                                                                             "https://nasagov.box.com/shared/static/6obyn1q5vumn8e8ogws5azpzfo83od08.zip"],
     }
 
     if model_path_name in downloadable_weights.keys():
@@ -549,7 +571,7 @@ def generate_config(args, create=True, verbose=True):
         # Hash is always dependent upon these values
         dependents = [getattr(act, 'dest', '') for group in [hypers, update] for act in group._group_actions]
         dependents += ['x_scalers', 'y_scalers']
-        if args.sensor in ['PRISMA', 'HICO', 'PACE',
+        if args.sensor in ['PRISMA', 'HICO', 'PACE','EMIT','PRISM','AVIRISNG',
                            'PACE-delivery'] and args.product == 'aph,chl,tss,pc,ad,ag,cdom': dependents += ['allow_missing',
                                                                                                             'allow_nan_inp',
                                                                                                             'allow_nan_out',
