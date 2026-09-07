@@ -102,9 +102,9 @@ def get_default_pipeline_kwargs(sensor, product):
                 'product': max_model_products,
                 'sat_bands': False,
                 'model_loc': "Weights",
-                'sensor': 'S3A',
+                'sensor': 'OLCI',
                 'silent': True,
-                'model_uid': "5a77d134c57e23dccf34fde5c1d19bffb278def934e2e51c2cbffa4bdac6e363"
+                'model_uid': "73bf3ca36f95d13a38032a36f7565a992fa772af0833ad2f74b710b6df33eba2"
             }
         else:
             raise ValueError(

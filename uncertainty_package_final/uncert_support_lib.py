@@ -52,8 +52,8 @@ def get_sample_uncertainity(pred_dist, compress=False):
         )
 
         # Force the 1D results into the slice
-        aleatoric[ii, :, :] = alt
-        epistemic[ii, :, :] = eps
+        aleatoric[ii, :, :] = np.reshape(alt, aleatoric[ii, :, :].shape)
+        epistemic[ii, :, :] = np.reshape(eps, epistemic[ii, :, :].shape)
         
     if compress:
         uncert = np.sqrt(np.sum(aleatoric, axis=1) + np.sum(epistemic, axis=1))
