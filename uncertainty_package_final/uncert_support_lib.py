@@ -41,19 +41,20 @@ def get_sample_uncertainity(pred_dist, compress=False):
         # pi = pred_dist['pred_wts'][ii, :]
         # mu = pred_dist['pred_mu'][ii, :]
         # var = pred_dist['pred_sigma'][ii, :]
+        
+        alt, eps = uncertainity_estimation(
+                nDim=pred_dist['pred_mu'][ii, :].shape[1],
+                nDist=pred_dist['pred_mu'][ii, :].shape[0]
+        ).estimate_uncertainity(
+                pred_dist['pred_wts'][ii, :], 
+                pred_dist['pred_mu'][ii, :], 
+                pred_dist['pred_sigma'][ii, :]
+        )
 
-        aleatoric[ii, :], epistemic[ii, :] = uncertainity_estimation(nDim=pred_dist['pred_mu'][ii, :].shape[1],
-                                                                     nDist=pred_dist['pred_mu'][ii, :].shape[
-                                                                         0]).estimate_uncertainity(
-            pred_dist['pred_wts'][ii, :], pred_dist['pred_mu'][ii, :], pred_dist['pred_sigma'][ii, :])
-
-        """if aleatoric is None or epistemic is None:
-            aleatoric = alt
-            epistemic = eps
-        else:
-            aleatoric = np.vstack((aleatoric, alt))
-            epistemic = np.vstack((epistemic, eps))"""
-
+        # Force the 1D results into the slice
+        aleatoric[ii, :, :] = alt
+        epistemic[ii, :, :] = eps
+        
     if compress:
         uncert = np.sqrt(np.sum(aleatoric, axis=1) + np.sum(epistemic, axis=1))
         return uncert
