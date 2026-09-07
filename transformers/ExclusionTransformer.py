@@ -1,6 +1,7 @@
 import numpy as np
+import importlib
 
-from ._CustomTransformer import _CustomTransformer
+from ._CustomTransformer import _CustomTransformer, deserialize_transformer
 
 
 class ExclusionTransformer(_CustomTransformer):
@@ -16,9 +17,19 @@ class ExclusionTransformer(_CustomTransformer):
         etc.
     '''
 
-    def __init__(self, exclude_slice, transformer, transformer_args=[], transformer_kwargs={}):
-        self.transformer = transformer(*transformer_args, **transformer_kwargs)
-        self.excl = exclude_slice
+    def __init__(self, excl, transformer, transformer_args=[], transformer_kwargs={}, keep=None):
+        if isinstance(transformer, dict) and transformer.get("_kind") == "SklearnTransformer":
+            transformer = deserialize_transformer(transformer)
+            self.transformer = transformer
+        else:
+            self.transformer = transformer(*transformer_args, **transformer_kwargs)
+
+        if isinstance(excl, dict) and excl.get("_kind") == "Slice":
+            self.excl = slice(excl["start"], excl["stop"], excl["step"])
+        else:
+            self.excl = excl
+
+        self.keep = keep
 
     def _fit(self, X, *args, **kwargs):
         cols = np.arange(X.shape[1])

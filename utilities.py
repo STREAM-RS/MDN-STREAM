@@ -408,7 +408,7 @@ def get_mdn_preds_uncertainties(
     -------
     predictions_dict : dict
         'pred' : ndarray
-            - "select": (n_samples, n_outputs)
+            - "select": (1, n_samples, n_outputs)
             - "full": (n_models, n_samples, n_outputs)
         'selected_index' : None for "full", or array (n_samples,) for "select"
 
@@ -479,7 +479,7 @@ def get_mdn_predictions_and_uncertainties(
     progress_vis: bool = True
 ):
     """
-    Compute MDN predictions (MLE) and uncertainties (aleatoric + epistemic) for an ensemble of MDNs.
+    Extract MDN predictions (MLE) and uncertainties (aleatoric + epistemic) from the output of an ensemble of MDNs.
 
     Parameters
     ----------
@@ -512,7 +512,7 @@ def get_mdn_predictions_and_uncertainties(
     predictions : dict
         'pred' : ndarray
             - full: (n_models, n_samples, n_outputs)
-            - select: (n_samples, n_outputs)
+            - select: (1, n_samples, n_outputs)
         'selected_index' : None for full, or array (n_samples,) for select
 
     uncertainties : dict
@@ -614,11 +614,20 @@ def get_mdn_predictions_and_uncertainties(
     # ------------------------
     # Prepare outputs
     # ------------------------
+    if op_mode == "select":
+        #update the shape to have a dummy model dimension for consistency
+        pred_array = np.expand_dims(pred_array, axis=0)
+        high = np.expand_dims(high, axis=0)
+        low = np.expand_dims(low, axis=0)
+
     predictions = {"pred": pred_array, "selected_index": selected_index}
 
     uncertainties = {"comp_unc": high - low} if uncert_mode == "composite" else {"low_lim": low, "high_lim": high}
 
     return predictions, uncertainties
+
+
+
 
 
 def map_cube_mdn_full(
@@ -770,28 +779,30 @@ def map_cube_mdn_full(
             final_uncert.append(uncert['comp_unc'])
 
     # Concatenate all blocks
-    final_estimates = np.vstack(final_estimates)
+    #final_estimates = np.vstack(final_estimates)
+    final_estimates = np.concatenate(final_estimates, axis=1)
     if uncert_mode == "limits":
-        low_lim = np.vstack([x[0] for x in final_uncert])
-        high_lim = np.vstack([x[1] for x in final_uncert])
+        low_lim = np.concatenate([x[0] for x in final_uncert], axis=1)
+        high_lim = np.concatenate([x[1] for x in final_uncert], axis=1)
     else:
-        final_uncert = np.vstack(final_uncert)
+        #final_uncert = np.vstack(final_uncert)
+        final_uncert = np.concatenate(final_uncert, axis=1)
 
     # ------------------------
     # Reconstruct image cubes
     # ------------------------
-    n_outputs = final_estimates.shape[1]
+    n_outputs = final_estimates.shape[-1]
     img_preds = args.no_data * np.ones((img_data.shape[0], img_data.shape[1], n_outputs))
-    img_preds[water_pixels[0], water_pixels[1], :] = final_estimates
+    img_preds[water_pixels[0], water_pixels[1], :] = np.squeeze(final_estimates)
 
     if uncert_mode == "limits":
         img_uncert_lb = args.no_data *np.ones_like(img_preds)
         img_uncert_ub = args.no_data * np.ones_like(img_preds)
-        img_uncert_lb[water_pixels[0], water_pixels[1], :] = low_lim
-        img_uncert_ub[water_pixels[0], water_pixels[1], :] = high_lim
+        img_uncert_lb[water_pixels[0], water_pixels[1], :] = np.squeeze(low_lim)
+        img_uncert_ub[water_pixels[0], water_pixels[1], :] = np.squeeze(high_lim)
         return img_preds, (img_uncert_lb, img_uncert_ub), op_slices
     else:
         img_uncert = args.no_data * np.ones_like(img_preds)
-        img_uncert[water_pixels[0], water_pixels[1], :] = final_uncert
+        img_uncert[water_pixels[0], water_pixels[1], :] = np.squeeze(final_uncert)
         return img_preds, img_uncert, op_slices
 

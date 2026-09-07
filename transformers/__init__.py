@@ -11,7 +11,7 @@ from .LogTransformer import LogTransformer
 from .NegLogTransformer import NegLogTransformer
 from .RatioTransformer import RatioTransformer
 from .TanhTransformer import TanhTransformer
-from ._CustomTransformer import _CustomTransformer
+from ._CustomTransformer import _CustomTransformer, deserialize_transformer
 from ..meta import get_sensor_bands
 from ..utils import using_feature
 
@@ -93,3 +93,5 @@ class TransformerPipeline(_CustomTransformer):
         for scaler in self.scalers:
             X = scaler.fit_transform(X, *args, **kwargs)
         return X
+
+

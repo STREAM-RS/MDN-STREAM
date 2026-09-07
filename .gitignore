@@ -17,6 +17,9 @@ toy*
 # pdf files
 *.pdf
 
+# old files
+*_old*
+
 # Uncompressed model files
 Weights/*/*/
 Weights/PACE-delivery

@@ -326,7 +326,11 @@ class MDN:
         # inv_scaler  = lambda y: tf.math.exp((tf.reshape(y, shape=[-1]) - yscaler_a) / yscaler_b)
         # extract_est = lambda z: self._get_top_estimate( self._parse_outputs(z) )
 
-        optimizer = tf.keras.optimizers.Adam(self.lr)
+        if version.parse(tf.__version__) <= version.parse("2.11.0"):
+            optimizer = tf.keras.optimizers.legacy.Adam(self.lr)    
+        else:
+            optimizer = tf.keras.optimizers.Adam(self.lr)
+            
         self.model = tf.keras.Sequential(model_layers + [output_layer], name=self.model_name)
         self.model.compile(loss=self.loss, optimizer=optimizer, metrics=[])  # [MSA(extract_est, inv_scaler)])
 
@@ -395,7 +399,7 @@ class MDN:
 
         tf.random.set_global_generator(self.tf_random)
         'Load version appropriate model name'
-        if version.parse(tf.__version__) < version.parse("2.11.0"):
+        if version.parse(tf.__version__) <= version.parse("2.11.0"):
             'Check if a tensorflow saved model in HDFs format'
             if self.model_path.joinpath('trained_model.h5').is_file():
                 'Load Tensorflow model'

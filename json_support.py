@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.base import TransformerMixin
 
-from .transformers import TransformerPipeline
+from .transformers import TransformerPipeline, deserialize_transformer
 
 
 # -------------------
@@ -68,9 +68,9 @@ def serialize_transformer(transformer):
     }
 
 
-def deserialize_transformer(data):
+#def deserialize_transformer(data):
     """Recreate any sklearn TransformerMixin from serialized form."""
-    module_name, cls_name = data["class_path"].rsplit(".", 1)
+    """module_name, cls_name = data["class_path"].rsplit(".", 1)
     module = importlib.import_module(module_name)
     cls = getattr(module, cls_name)
 
@@ -80,7 +80,7 @@ def deserialize_transformer(data):
     for attr, val in data.get("state", {}).items():
         setattr(transformer, attr, np.array(val) if isinstance(val, list) else val)
 
-    return transformer
+    return transformer"""
 
 
 # ----------------------------
