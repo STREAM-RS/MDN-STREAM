@@ -330,7 +330,15 @@ class MDN:
             optimizer = tf.keras.optimizers.legacy.Adam(self.lr)    
         else:
             optimizer = tf.keras.optimizers.Adam(self.lr)
-            
+        
+        import platform
+        
+        is_mac           = platform.system() == "Darwin"
+        is_apple_silicon = platform.processor() == "arm"
+        
+        if is_mac and is_apple_silicon:
+            optimizer = tf.keras.optimizers.legacy.Adam(self.lr)
+
         self.model = tf.keras.Sequential(model_layers + [output_layer], name=self.model_name)
         self.model.compile(loss=self.loss, optimizer=optimizer, metrics=[])  # [MSA(extract_est, inv_scaler)])
 
@@ -421,7 +429,16 @@ class MDN:
                                                         custom_objects={"MixtureLayer": MixtureLayer,
                                                                         "loss": self.loss},
                                                         compile=False)
-                self.model.compile(loss=self.loss, optimizer=tf.keras.optimizers.Adam(self.lr), metrics=[])
+                import platform
+                is_mac           = platform.system() == "Darwin"
+                is_apple_silicon = platform.processor() == "arm"
+                
+                if is_mac and is_apple_silicon:
+                    optimizer = tf.keras.optimizers.legacy.Adam(self.lr)
+                else:
+                    optimizer=tf.keras.optimizers.Adam(self.lr)
+                    
+                self.model.compile(loss=self.loss, optimizer=optimizer, metrics=[])
             else:
                 raise FileNotFoundError(
                     f"❌ No pre-trained TensorFlow models found at {self.model_path}. "

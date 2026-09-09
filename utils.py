@@ -21,20 +21,20 @@ from .meta import get_sensor_bands, ANCILLARY, PERIODIC
 from .parameters import update, hypers, flags, get_args
 
 supported_models = {
-    'OLI': ['chl,tss,cdom', 'chl'],
+    'OLI': ['chl,tss,cdom'],
 
-    'OLCI': ['chl,tss,cdom', 'chl'],
+    'OLCI': ['chl,tss,cdom'],
 
-    'MSI': ['chl,tss,cdom', 'chl'],
+    'MSI': ['chl,tss,cdom'],
 
-    'S3A': ['chl,tss,cdom,pc'],
-    'S3B': ['chl,tss,cdom,pc'],
+    #'S3A': ['chl,tss,cdom,pc'],
+    #'S3B': ['chl,tss,cdom,pc'],
 
     'HICO': ['aph,chl,tss,pc,ad,ag,cdom'],
 
     'PRISMA': ['aph,chl,tss,pc,ad,ag,cdom'],
-    'PACE': ['aph,chl,tss,pc,ad,ag,cdom'],
-    'PACE-sat': ['aph,chl,tss,pc,ad,ag,cdom'],
+    #'PACE': ['aph,chl,tss,pc,ad,ag,cdom'],
+    'PACE-delivery': ['aph,chl,tss,pc,ad,ag,cdom'],
     'VI': ['Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667'],
     'MOD': ['Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667'],
     'MERIS': ['Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667'],
@@ -79,7 +79,8 @@ def current_support():
     ctr = 1
     for key in supported_models:
         for item in supported_models[key]:
-            print(f'Model-{ctr}: predicts {item} from {key} data')
+            print(f'{key}: predicts {item}')
+
             ctr += 1
 
 
