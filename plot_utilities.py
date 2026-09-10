@@ -6,6 +6,9 @@ Description:    This code file contains the helper functions needed to create hi
 
 Date Created:   September 2nd, 2024
 """
+import matplotlib
+matplotlib.use("Agg")
+
 import matplotlib as mpl
 import matplotlib.patheffects as pe
 import matplotlib.ticker as ticker
@@ -19,14 +22,27 @@ from .metrics import mape, mdsa
 from .utils import get_tile_data, get_tile_geographic_info
 
 'Set display parameters for MATPLOTLIB'
+default_params = mpl.rcParamsDefault
+modified_params = {key: value for key, value in plt.rcParams.items() if value != default_params[key]}
+
+'Set display parameters for MATPLOTLIB'
 plt.rcParams.update({
     "text.usetex": True,
     "font.family": "sans-serif",
     "font.sans-serif": ["Helvetica"]})
 plt.rcParams['mathtext.default'] = 'regular'
-SMALL_SIZE = 12
-MEDIUM_SIZE = 14
-BIGGER_SIZE = 16
+print("Modified RC Params:",modified_params.keys())
+    
+SMALL_SIZE  = modified_params['axes.titlesize']   if 'axes.titlesize'   in modified_params.keys() else 12
+MEDIUM_SIZE = modified_params['axes.labelsize']   if 'axes.labelsize'   in modified_params.keys() else 14
+BIGGER_SIZE = modified_params['figure.titlesize'] if 'figure.titlesize' in modified_params.keys() else 16   
+
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Helvetica"]})
+plt.rcParams['mathtext.default'] = 'regular'
+
 mrkSize = 25
 ASPECT = "auto"
 cmap = "jet"
@@ -104,7 +120,8 @@ def add_identity(ax, *line_args, **line_kwargs):
 
 def create_scatterplots_trueVsPred(y_true, y_pred, color=None, short_name=None, x_label=None, y_label=None,
                                    inplot_str=None,
-                                   title="Model Performance", maxv_b=None, minv_b=None, ipython_mode=False):
+                                   title="Model Performance", maxv_b=None, minv_b=None, ipython_mode=False,
+                                   vmin_b=None, vmax_b=None):
     """
     This function creates scatter plots that can be used compares the true value of a predicted variable against the
     value predicted by a machine learning algorithm. Each variable is placed in a seperate subplot
@@ -140,142 +157,122 @@ def create_scatterplots_trueVsPred(y_true, y_pred, color=None, short_name=None, 
     :param ipython_mode:[bool] (Default: False)
     In the ipython_mode, the images are auto displayed and figure is not returned by the function
 
+    :param vmin_b: [list: nVariables] (Default: [30.0]* nVariables)
+    If using a vector color bar set the lower limit on the colorbar for each plot
+
+    :param vmax_b: [list: nVariables] (Default: [100.0]* nVariables)
+    If using a vector color bar set the higher limit on the colorbar for each plot
+
     :return:
     """
 
-    'Check sizes of the true and predicted values are the same'
+    # Check sizes of the true and predicted values are the same
     assert y_true.shape == y_pred.shape, 'The arrays of the true and predicted values must have the same shape'
-    'Check short names if provided else create appropriate short names'
+    n_vars = y_true.shape[1]
+
+    # Check short names if provided else create appropriate short names
     if short_name is not None:
-        assert len(short_name) == y_true.shape[1], f"Expected {y_true.shape[1]} names. Got {len(short_name)}."
+        assert len(short_name) == n_vars, f"Expected {n_vars} names. Got {len(short_name)}."
         assert all(isinstance(item, str) for item in short_name), "All elements of <short_names> must be strings"
     else:
-        short_name = [f"Var-{ii + 1}" for ii in range(len(short_name))]
+        short_name = [f"Var-{ii + 1}" for ii in range(n_vars)]
 
-    'If color vector is given check that is accurate'
+    # If color vector is given check that is accurate
     if color is not None:
         assert color.shape == y_true.shape, f"The color vector should be defined for each point"
         assert isinstance(color, np.ndarray), f"The color variable must be numeric"
         assert np.issubdtype(color.dtype, np.number), f"All entries of the color variable must be numeric"
 
-    'Check the labels provided'
+    # Check the labels provided
     if x_label is not None:
-        assert len(x_label) == y_true.shape[1], f"Expected {y_true.shape[1]} names. Got {len(x_label)}."
+        assert len(x_label) == n_vars, f"Expected {n_vars} names. Got {len(x_label)}."
         assert all(isinstance(item, str) for item in x_label), "All elements of <x_label> must be strings"
     else:
         x_label = [f"True Var-{ii + 1}" for ii in range(len(short_name))]
 
     if y_label is not None:
-        assert len(y_label) == y_true.shape[1], f"Expected {y_true.shape[1]} names. Got {len(y_label)}."
+        assert len(y_label) == n_vars, f"Expected {n_vars} names. Got {len(y_label)}."
         assert all(isinstance(item, str) for item in y_label), "All elements of <y_label> must be strings"
     else:
         y_label = [f"Predicted Var-{ii + 1}" for ii in range(len(short_name))]
 
-    'Check the labels provided'
+    # Check the labels provided
     if inplot_str is not None:
-        assert len(inplot_str) == y_true.shape[1], f"Expected {y_true.shape[1]} names. Got {len(inplot_str)}."
+        assert len(inplot_str) == n_vars, f"Expected {n_vars} names. Got {len(inplot_str)}."
         assert all(isinstance(item, str) for item in inplot_str), "All elements of <inplot_str> must be strings"
 
-    'Check the provided limits for each scatterplot'
+    # Check the provided limits for each scatterplot
     if maxv_b is not None:
-        assert len(maxv_b) == y_true.shape[1], f"Need to define limits for {y_true.shape[1]} plots . " \
-                                               f"Got {len(maxv_b)}."
-        assert all(isinstance(item, int) for item in maxv_b), "The limits need to be integers"
+        assert len(maxv_b) == n_vars, f"Need to define limits for {n_vars} plots . Got {len(maxv_b)}."
+        assert all(isinstance(item, (int, float)) for item in maxv_b), "The limits need to be numeric"
     else:
-        maxv_b = [1] * y_true.shape[1]
+        maxv_b = [1] * n_vars
 
-    'Check the provided limits for each scatterplot'
+    # Check the provided limits for each scatterplot
     if minv_b is not None:
-        assert len(minv_b) == y_true.shape[1], f"Need to define limits for {y_true.shape[1]} plots . " \
-                                               f"Got {len(minv_b)}."
-        assert all(isinstance(item, int) for item in minv_b), "The limits need to be integers"
+        assert len(minv_b) == n_vars, f"Need to define limits for {n_vars} plots . Got {len(minv_b)}."
+        assert all(isinstance(item, (int, float)) for item in minv_b), "The limits need to be numeric"
     else:
-        minv_b = [-1] * y_true.shape[1]
+        minv_b = [-1] * n_vars
 
-    'Create the base figure and set its properties'
-    fig1, axes = plt.subplots(nrows=1, ncols=y_true.shape[1], figsize=((7.5 * y_true.shape[1]), 7))
+    # Check the provided colorbar limits for each scatterplot
+    if vmin_b is not None:
+        assert len(vmin_b) == n_vars, f"Need to define vmin limits for {n_vars} plots. Got {len(vmin_b)}."
+        assert all(isinstance(item, (int, float)) for item in vmin_b), "The colorbar vmin limits need to be numeric"
+    else:
+        vmin_b = [30.0] * n_vars
+
+    if vmax_b is not None:
+        assert len(vmax_b) == n_vars, f"Need to define vmax limits for {n_vars} plots. Got {len(vmax_b)}."
+        assert all(isinstance(item, (int, float)) for item in vmax_b), "The colorbar vmax limits need to be numeric"
+    else:
+        vmax_b = [100.0] * n_vars
+
+    # Create the base figure and flatten axes safely
+    fig1, axes = plt.subplots(nrows=1, ncols=n_vars, figsize=((9 * n_vars), 9))
     axes = [ax for axs in np.atleast_1d(axes) for ax in np.atleast_1d(axs)]
-    point_colors = ['xkcd:fresh green', 'xkcd:tangerine', 'xkcd:sky blue', 'xkcd:greyish blue', 'xkcd:goldenrod',
+    
+    # Pre-defined fallback palette for plots if color is not given
+    point_colors = ['xkcd:fresh green', 'xkcd:sky blue', 'xkcd:tangerine', 'xkcd:greyish blue', 'xkcd:goldenrod',
                     'xkcd:clay', 'xkcd:bluish purple', 'xkcd:reddish']
 
-    ctr = 0
-    for (lbl, y1, y2) in zip(short_name, y_true.T, y_pred.T):
-        if inplot_str is not None:
-            str1 = inplot_str[ctr]
-        else:
-            str1 = None
-        # print(str1)
+    # Iterate and cleanly forward single variable tracking to create_scatterplots_axis
+    for ctr in range(n_vars):
+        # Package scalar metrics safely into lists for the sub-function interface
+        sub_short_name = [short_name[ctr]]
+        sub_x_label = [x_label[ctr]]
+        sub_y_label = [y_label[ctr]]
+        sub_inplot_str = [inplot_str[ctr]] if inplot_str is not None else None
+        
+        # Maintain multi-column array formats for matching sub-function constraints
+        sub_y_true = y_true[:, [ctr]]
+        sub_y_pred = y_pred[:, [ctr]]
+        sub_color = color[:, [ctr]] if color is not None else None
+        
+        # Pick default fallback background color map sequence
+        fallback_color = point_colors[ctr % len(point_colors)]
 
-        l_kws = {'color': point_colors[ctr], 'path_effects': [pe.Stroke(linewidth=4, foreground='k'), pe.Normal()],
-                 'zorder': 22,
-                 'lw': 1}
-        s_kws = {'alpha': 0.4, 'color': point_colors[ctr]}  # , 'edgecolor': 'grey'}
+        # Call the standalone sub-function to populate this exact axis
+        create_scatterplots_axis(
+            ax=axes[ctr],
+            y_true=sub_y_true,
+            y_pred=sub_y_pred,
+            color=sub_color,
+            short_name=sub_short_name,
+            x_label=sub_x_label,
+            y_label=sub_y_label,
+            def_scatter_color=fallback_color,
+            inplot_str=sub_inplot_str,
+            maxv=maxv_b[ctr],
+            minv=minv_b[ctr],
+            ipython_mode=ipython_mode,
+            vmin=vmin_b[ctr],
+            vmax=vmax_b[ctr]
+        )
 
-        # curr_idx = 0
-
-        # minv = -2 if lbl == 'cdom' else minv_b[ctr]  # int(np.nanmin(y_true_log)) - 1 if product != 'aph' else -4
-        # maxv = 3 if lbl == 'tss' else 3 if lbl == 'chl' else maxv_b[ctr]  # int(np.nanmax(y_true_log)) + 1 if product != 'aph' else 1
-        loc = ticker.LinearLocator(numticks=int(round((maxv - minv) / 0.5) + 1))
-        # fmt = ticker.FuncFormatter(lambda i, _: r'$10$\textsuperscript{%.1f}' % i)
-        fmt1 = ticker.FuncFormatter(lambda i, _: r'%1.1f' % (10 ** i))
-        fmt2 = ticker.FuncFormatter(lambda i, _: r'%1.1f' % (10 ** i) if ((i / 0.5) % 2 == 0) else '')
-
-        axes[ctr].set_ylim((minv, maxv))
-        axes[ctr].set_xlim((minv, maxv))
-        axes[ctr].xaxis.set_major_locator(loc)
-        axes[ctr].yaxis.set_major_locator(loc)
-        axes[ctr].xaxis.set_major_formatter(fmt2)
-        axes[ctr].yaxis.set_major_formatter(fmt1)
-        axes[ctr].tick_params(axis='both', labelsize=SMALL_SIZE)
-
-        valid = np.logical_and(np.isfinite(y1), np.isfinite(y2))
-        if valid.sum():
-            df = pd.DataFrame((np.vstack((np.log10(y1[valid] + 1e-6), np.log10(y2[valid] + 1e-6)))).T,
-                              columns=['true', 'pred'])
-
-            if color is not None:
-                sns.regplot(x='true', y='pred', data=df, scatter=False,
-                            ax=axes[ctr], scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False, robust=True,
-                            ci=None)
-                plt.scatter(np.log10(y1[valid] + 1e-6), np.log10(y2[valid] + 1e-6), c=color[:, ctr], edgecolor='k',
-                            s=mrkSize, vmin=np.percentile(np.squeeze(color[:, ctr]), 10),
-                            vmax=np.percentile(np.squeeze(color[:, ctr]), 90))
-            else:
-                sns.regplot(x='true', y='pred', data=df, scatter=True,
-                            ax=axes[ctr], scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False, robust=True,
-                            ci=None)
-
-            kde = sns.kdeplot(x='true', y='pred', data=df,
-                              shade=False, ax=axes[ctr], bw='scott', n_levels=4, legend=False, gridsize=100,
-                              color=point_colors[ctr])
-
-        invalid = np.logical_and(np.isfinite(y1), ~np.isfinite(y2))
-        if invalid.sum():
-            axes[ctr].scatter(np.log10(y1[invalid] + 1e-6), [minv] * (invalid).sum(), color='r',
-                              alpha=0.4, label=r'$\mathbf{%s\ invalid}$' % (invalid).sum())
-            axes[ctr].legend(loc='lower right', prop={'weight': 'bold', 'size': 16})
-
-        add_identity(axes[ctr], ls='--', color='k', zorder=20)
-
-        props = dict(boxstyle='round', facecolor='white', alpha=0.7)
-        if str1 is not None:
-            str1 = (str1.strip()).replace(',', '\n')
-            axes[ctr].text(0.05, 0.95, str1, transform=axes[ctr].transAxes, fontsize=SMALL_SIZE * 1, weight="bold",
-                           verticalalignment='top', bbox=props)
-
-        textstr1 = r'(N=' + f"{(y2[valid]).shape[0]})"
-        axes[ctr].text(0.75, 0.1, textstr1, transform=axes[ctr].transAxes, fontsize=SMALL_SIZE * 1, weight="bold",
-                       verticalalignment='top', bbox=props)
-
-        axes[ctr].set_xlabel(x_label[ctr].replace(' ', '\ '), fontsize=MEDIUM_SIZE * 1, labelpad=10)
-        axes[ctr].set_ylabel(y_label[ctr].replace(' ', '\ '), fontsize=MEDIUM_SIZE * 1, labelpad=10)
-        axes[ctr].set_aspect('equal', 'box')
-        axes[ctr].set_title(short_name[ctr])
-        axes[ctr].grid()
-
-        ctr += 1
-
-    plt.suptitle(title, fontsize=BIGGER_SIZE, weight="bold")
+    # Big super-title configuration
+    big_sz = globals().get('BIGGER_SIZE', 16)
+    plt.suptitle(title, fontsize=big_sz, weight="bold")
 
     if not ipython_mode:
         return fig1
@@ -332,142 +329,140 @@ def create_scatterplots_axis(ax, y_true, y_pred, color=None, short_name=None, x_
     :return:
     """
 
-    'Check that a valid matplotlib axis is provided'
+    # Check that a valid matplotlib axis is provided
     assert isinstance(ax, Axes), f"The variable <ax> needs to be a matplotlib.axes.Axes instead got {type(ax)}"
 
-    'Check sizes of the true and predicted values are the same'
+    # Check sizes of the true and predicted values are the same
     assert y_true.shape[1] == 1, f"This function is only designed to plot one variable" \
                                  f" instead recieved {y_true.shape[1]} (assumes rows are samples and columns " \
                                  f"are variables)."
     assert y_true.shape == y_pred.shape, 'The arrays of the true and predicted values must have the same shape'
-    'Check short names if provided else create appropriate short names'
+    
+    # Check short names if provided else create appropriate short names
     if short_name is not None:
         assert len(short_name) == y_true.shape[1], f"Expected {y_true.shape[1]} names. Got {len(short_name)}."
         assert all(isinstance(item, str) for item in short_name), "All elements of <short_names> must be strings"
     else:
-        short_name = [f"Var-{ii + 1}" for ii in range(len(short_name))]
+        short_name = ["Var-1"]
 
-    'If color vector is given check that is accurate'
+    # If color vector is given check that is accurate
     if color is not None:
         assert color.shape == y_true.shape, f"The color vector should be defined for each point"
         assert isinstance(color, np.ndarray), f"The color variable must be numeric"
         assert np.issubdtype(color.dtype, np.number), f"All entries of the color variable must be numeric"
 
-    'Check the labels provided'
+    # Check the labels provided
     if x_label is not None:
         assert len(x_label) == y_true.shape[1], f"Expected {y_true.shape[1]} names. Got {len(x_label)}."
         assert all(isinstance(item, str) for item in x_label), "All elements of <x_label> must be strings"
     else:
-        x_label = [f"True Var-{ii + 1}" for ii in range(len(short_name))]
+        x_label = [f"True Var-1"]
 
     if y_label is not None:
         assert len(y_label) == y_true.shape[1], f"Expected {y_true.shape[1]} names. Got {len(y_label)}."
         assert all(isinstance(item, str) for item in y_label), "All elements of <y_label> must be strings"
     else:
-        y_label = [f"Predicted Var-{ii + 1}" for ii in range(len(short_name))]
+        y_label = [f"Predicted Var-1"]
 
-    'Check the labels provided'
+    # Check the labels provided
     if inplot_str is not None:
         assert len(inplot_str) == y_true.shape[1], f"Expected {y_true.shape[1]} names. Got {len(inplot_str)}."
         assert all(isinstance(item, str) for item in inplot_str), "All elements of <inplot_str> must be strings"
 
-    'Check that an upper limit is provided for the scatterplot'
+    # Check that an upper limit is provided for the scatterplot
     if maxv is not None:
-        assert isinstance(maxv, int), "The limits need to be integers"
+        assert isinstance(maxv, (int, float)), "The limits need to be numeric"
     else:
         maxv = 1
 
-    'Check that an upper limit is provided for the scatterplot'
+    # Check that an upper limit is provided for the scatterplot
     if minv is not None:
-        assert isinstance(minv, int), "The limits need to be integers"
+        assert isinstance(minv, (int, float)), "The limits need to be numeric"
     else:
         minv = -1
 
-    'Set the properties of the scatterplot, contours etc.'
+    small_sz = globals().get('SMALL_SIZE', 12)
+    med_sz = globals().get('MEDIUM_SIZE', 14)
+    mrk_sz = globals().get('mrkSize', 80)
+
+    # Set the properties of the scatterplot, contours etc.
     l_kws = {'color': def_scatter_color, 'path_effects': [pe.Stroke(linewidth=4, foreground='k'), pe.Normal()],
              'zorder': 22,
              'lw': 1}
-    s_kws = {'alpha': 0.4, 'color': "black"}  # , 'edgecolor': 'grey'}
+    s_kws = {'alpha': 0.4, 'color': def_scatter_color, 's': 80}
 
-    'Set the format of the axis/ticker etc.'
-    'Set axis tick locations'
+    # Set the format of the axis/ticker etc.
     loc = ticker.LinearLocator(numticks=int(round((maxv - minv) / 0.5) + 1))
-    'Set appropriate format for axis tick labels'
     fmt1 = ticker.FuncFormatter(lambda i, _: r'%1.1f' % (10 ** i))
-    # fmt2 = ticker.FuncFormatter(lambda i, _: r'%1.1f' % (10 ** i) if ((i / 0.5) % 2 == 0) else '')
-    'Set the max and min limits fir the axis as provided by the user'
+    
     ax.set_ylim((minv, maxv))
     ax.set_xlim((minv, maxv))
-    'Set the ticks'
     ax.xaxis.set_major_locator(loc)
     ax.yaxis.set_major_locator(loc)
-    'Set the tick labels'
     ax.xaxis.set_major_formatter(fmt1)
     ax.yaxis.set_major_formatter(fmt1)
-    ax.tick_params(axis='both', labelsize=SMALL_SIZE)
+    ax.tick_params(axis='both', labelsize=small_sz)
 
-    'Check/process the string to be placed inside the scatter-plot. Primary use case is to display the regression' \
-    'metrics corresponding to a specific scatterplot'
     if inplot_str is not None:
         str1 = inplot_str[0]
     else:
         str1 = None
 
-    'Squeeze values'
-    y_true, y_pred = np.squeeze(y_true), np.squeeze(y_pred)
-    'Ensure that there are valid values'
-    valid = np.logical_and(np.isfinite(y_true), np.isfinite(y_pred))
+    y_true_sq, y_pred_sq = np.squeeze(y_true), np.squeeze(y_pred)
+    valid = np.logical_and(np.isfinite(y_true_sq), np.isfinite(y_pred_sq))
+    
     if valid.sum():
-        df = pd.DataFrame((np.vstack((np.log10(y_true[valid] + 1e-6),
-                                      np.log10(y_pred[valid] + 1e-6)))).T, columns=['true', 'pred'])
+        df = pd.DataFrame((np.vstack((np.log10(y_true_sq[valid] + 1e-6),
+                                      np.log10(y_pred_sq[valid] + 1e-6)))).T, columns=['true', 'pred'])
 
-        'Create the Seaborn regplot to show how good the regression is'
-        'If point by point color is provided fill that in using matplotlib scatter as seaborn does not support that'
         if color is not None:
             sns.regplot(x='true', y='pred', data=df, scatter=False,
-                        ax=ax, scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False, robust=True,
+                        ax=ax, scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False, robust=False,
                         ci=None)
-            sc1 = ax.scatter(np.log10(y_true[valid] + 1e-6), np.log10(y_pred[valid] + 1e-6), c=color[:, 0],
-                             edgecolor='k',
-                             s=mrkSize, vmin=vmin, vmax=vmax)
-            plt.colorbar(sc1, ax=ax)
+            color_sq = np.squeeze(color)
+            sc1 = ax.scatter(df['true'], df['pred'], c=color_sq[valid], edgecolor='k',
+                             s=mrk_sz, vmin=vmin, vmax=vmax, cmap='viridis', zorder=21)
+            
+            plt.colorbar(sc1, ax=ax, orientation='horizontal', pad=0.15)
+            contour_color = "gray"
         else:
             sns.regplot(x='true', y='pred', data=df, scatter=True,
-                        ax=ax, scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False, robust=True,
+                        ax=ax, scatter_kws=s_kws, line_kws=l_kws, fit_reg=True, truncate=False, robust=False,
                         ci=None)
+            
+            contour_color = "tab:blue"
 
-        'Also use kdeplot to get the contours based on density'
+        # Explicitly assigned zorder=23 to keep the contours on top of the scatter plot (zorder=21)
         kde = sns.kdeplot(x='true', y='pred', data=df,
-                          shade=False, ax=ax, bw='scott', n_levels=4, legend=False, gridsize=100,
-                          color="tab:red")
+                          fill=False, ax=ax, bw_method='scott', n_levels=4, legend=False, gridsize=100,
+                          color=contour_color, zorder=23)
 
-    'Check and and place the invalid values'
-    invalid = np.logical_and(np.isfinite(y_true), ~np.isfinite(y_pred))
+    invalid = np.logical_and(np.isfinite(y_true_sq), ~np.isfinite(y_pred_sq))
     if invalid.sum():
-        ax.scatter(np.log10(y_true[invalid] + 1e-6), [minv] * (invalid).sum(), color='r',
+        ax.scatter(np.log10(y_true_sq[invalid] + 1e-6), [minv] * (invalid).sum(), color='r',
                    alpha=0.4, label=r'$\mathbf{%s\ invalid}$' % (invalid).sum())
         ax.legend(loc='lower right', prop={'weight': 'bold', 'size': 16})
 
-    add_identity(ax, ls='--', color='k', zorder=20)
+    if 'add_identity' in globals():
+        add_identity(ax, ls='--', color='k', zorder=20)
+    else:
+        ax.plot([minv, maxv], [minv, maxv], ls='--', color='k', zorder=20)
 
-    'Place the str in the legend'
     props = dict(boxstyle='round', facecolor='white', alpha=0.7)
     if str1 is not None:
         str1 = (str1.strip()).replace(',', '\n')
-        ax.text(0.05, 0.95, str1, transform=ax.transAxes, fontsize=SMALL_SIZE * 1, weight="bold",
+        ax.text(0.05, 0.95, str1, transform=ax.transAxes, fontsize=small_sz, weight="bold",
                 verticalalignment='top', bbox=props)
 
-    'Add a label to show the number of points'
-    textstr1 = r'(N=' + f"{(y_pred[valid]).shape[0]})"
-    ax.text(0.75, 0.1, textstr1, transform=ax.transAxes, fontsize=SMALL_SIZE * 1, weight="bold",
+    textstr1 = r'(N=' + f"{(y_pred_sq[valid]).shape[0]})"
+    ax.text(0.75, 0.1, textstr1, transform=ax.transAxes, fontsize=small_sz, weight="bold",
             verticalalignment='top', bbox=props)
 
-    ax.set_xlabel(x_label[0].replace(' ', '\ '), fontsize=MEDIUM_SIZE * 1, labelpad=10)
-    ax.set_ylabel(y_label[0].replace(' ', '\ '), fontsize=MEDIUM_SIZE * 1, labelpad=10)
+    ax.set_xlabel(x_label[0], fontsize=med_sz, labelpad=10)
+    ax.set_ylabel(y_label[0], fontsize=med_sz, labelpad=10)
     ax.set_aspect('equal', 'box')
     ax.set_title(short_name[0])
-    ax.grid()
-
+    ax.grid(True)
 
 def rgb_enhance(rgb: 'numpy.ndarray') -> 'numpy.ndaray':
     """ Rescale a rgb image to enhance the visual quality, adapted from:
@@ -571,8 +566,13 @@ def find_rgb_img_nc(file_name, sensor, rhos=True):
     :return:
     """
     'Get the image data and an RGB composite of the scene'
+    if rhos: 
+        key_in = 'rhos'
+    else:
+        key_in = 'Rrs'
+    
     if "L1B" not in str(file_name):
-        wvl_bands, img = get_tile_data(file_name, sensor, rhos=rhos)
+        wvl_bands, img = get_tile_data(file_name, sensor, key_in=key_in)
         wvl_bands = np.asarray(wvl_bands)
     else:
         import netCDF4
@@ -610,7 +610,7 @@ def find_rgb_img_nc(file_name, sensor, rhos=True):
     return img_rgb
 
 
-def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, ipython_mode=False):
+def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, flipud=False, ipython_mode=False,use_rhos=True):
     """
     This function can be used extract an RGB image by using the rhos data present in a netCDF file
 
@@ -634,7 +634,12 @@ def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, ipython_mode
     'Get the geographic information'
     lon, lat, extent = get_tile_geographic_info(file_name)
     'Get the rgb composite'
-    rgb_img = find_rgb_img_nc(file_name, sensor)
+    rgb_img = find_rgb_img_nc(file_name, sensor,rhos=use_rhos)
+
+    'If needed flip the image'
+    if flipud:
+        rgb_img = np.flipud(rgb_img)
+
 
     'Display the results'
     fig1, ax1 = plt.subplots(figsize=figsize)
@@ -684,15 +689,15 @@ def overlay_rgb_mdnProducts(rgb_img, model_preds, extent, img_uncert=None, produ
     assert rgb_img.shape[2] == 3, "The <rgb_img> can only have three bands"
     if len(model_preds.shape) == 3:
         assert model_preds.shape[2] == 1, "This function is only set up to the overlay the predictions of a single " \
-                                          "parameter at a time"
+                                          "band at a time"
 
     assert len(extent) == 4, "Need to provide the spatial extent of the image to be displayed"
     if img_uncert is not None:
         assert rgb_img.shape[:2] == img_uncert.shape[
                                     :2], f"The base RGB and uncertainty image should have the same spatial dimensions"
         if len(img_uncert.shape) > 2:
-            assert model_preds.shape[2] == 1, "This function is only set up to the overlay the predictions of a single " \
-                                              "parameter at a time"
+            assert img_uncert.shape[2] == 1, "This function is only set up to the overlay the predictions of a single " \
+                                              "band at a time"
 
     'Create the basic figure and set its properties'
     if img_uncert is not None:
@@ -727,6 +732,201 @@ def overlay_rgb_mdnProducts(rgb_img, model_preds, extent, img_uncert=None, produ
         pred_uncert_labels = [f'{(10 ** (i)):.2f}' for i in
                               pred_uncert_ticks]  # [f'{i:2.3f}' for i in pred_uncert_ticks]
         colorbar(img4, ticks_list=pred_uncert_ticks, lbl_list=pred_uncert_labels)
+
+    if not ipython_mode:
+        return fig1
+
+
+def overlay_rgb_mdn_preds_limits(
+    rgb_img,
+    model_preds,
+    extent,
+    img_uncert_low,
+    img_uncert_high,
+    product_name="Parameter",
+    figsize=(18, 6),
+    pred_ticks=[-1, 0, 1, 2],
+    pred_uncert_ticks=[-1, 0, 1, 2],
+    apply_log=True,
+    ipython_mode=False,
+    ASPECT="equal",
+    BIGGER_SIZE=12,
+):
+    """This function can be used to overlay the MDN-prediction maps (along with
+    lower and upper uncertainty limits) over the RGB composite of a satellite
+    image for display in a three-column panel.
+
+    Parameters
+    ----------
+    rgb_img : [np.ndarray, rows X cols X 3]
+        The RGB composite of the scene
+    model_preds : [np.ndarray, rows X cols]
+        The MDN predictions for that location
+    extent : [np.array]
+        A description of the extent of the location
+    img_uncert_low : [np.ndarray, rows X cols]
+        The lower uncertainty limit associated with the MDN predictions for
+        that location
+    img_uncert_high : [np.ndarray, rows X cols]
+        The upper uncertainty limit associated with the MDN predictions for
+        that location
+    product_name : [str], optional (Default: "Parameter")
+        The name of the product that has been predicted
+    figsize : [tuple], optional (Default: (18, 6))
+        Figure dimensions
+    pred_ticks : [list], optional (Default: [-1, 0, 1, 2])
+        Tick marks for the prediction colorbar
+    pred_uncert_ticks : [list], optional (Default: [-1, 0, 1, 2])
+        Tick marks for the uncertainty colorbars
+    apply_log : [bool], optional (Default: True)
+        If True, applies log10 transformation to the input data before plotting
+        and scales colorbar tick labels exponentially. If False, plots raw data
+        and displays standard tick labels.
+    ipython_mode : [bool], optional (Default: False)
+        In ipython_mode, the images are auto displayed and figure is not returned
+    ASPECT : [str], optional (Default: 'equal')
+        Aspect ratio for display
+    BIGGER_SIZE : [int], optional (Default: 12)
+        Font size for titles
+
+    Returns
+    -------
+    fig1 : [matplotlib.figure.Figure or None]
+        A figure with appropriate plots if ipython_mode is False.
+    """
+
+    # --- Xarray DataArray Guard ---
+    if hasattr(rgb_img, "values"):
+        rgb_img = rgb_img.values
+    if hasattr(model_preds, "values"):
+        model_preds = model_preds.values
+    if hasattr(img_uncert_low, "values"):
+        img_uncert_low = img_uncert_low.values
+    if hasattr(img_uncert_high, "values"):
+        img_uncert_high = img_uncert_high.values
+
+    # Handle 3D inputs with a single-dimension (squeezing to 2D)
+    if len(model_preds.shape) == 3 and model_preds.shape[2] == 1:
+        model_preds = model_preds.squeeze(axis=2)
+    if len(img_uncert_low.shape) == 3 and img_uncert_low.shape[2] == 1:
+        img_uncert_low = img_uncert_low.squeeze(axis=2)
+    if len(img_uncert_high.shape) == 3 and img_uncert_high.shape[2] == 1:
+        img_uncert_high = img_uncert_high.squeeze(axis=2)
+
+    # --- Data Property Assertions ---
+    assert (
+        len(extent) == 4
+    ), "Need to provide the spatial extent of the image to be displayed."
+    assert (
+        rgb_img.shape[2] == 3
+    ), f"The <rgb_img> must have exactly 3 bands. Found shape: {rgb_img.shape}"
+
+    spatial_shape = rgb_img.shape[:2]
+    assert (
+        model_preds.shape[:2] == spatial_shape
+    ), f"Predictions {model_preds.shape[:2]} must match RGB {spatial_shape} shape."
+    assert (
+        img_uncert_low.shape[:2] == spatial_shape
+    ), f"Lower uncertainty {img_uncert_low.shape[:2]} must match RGB {spatial_shape} shape."
+    assert (
+        img_uncert_high.shape[:2] == spatial_shape
+    ), f"Upper uncertainty {img_uncert_high.shape[:2]} must match RGB {spatial_shape} shape."
+
+    assert (
+        len(model_preds.shape) == 2
+    ), "model_preds must be a 2D array (y, x)."
+    assert (
+        len(img_uncert_low.shape) == 2
+    ), "img_uncert_low must be a 2D array (y, x)."
+    assert (
+        len(img_uncert_high.shape) == 2
+    ), "img_uncert_high must be a 2D array (y, x)."
+
+    # --- Data Processing & Label Generation ---
+    if apply_log:
+        plot_low = np.log10(img_uncert_low + 1.0e-6)
+        plot_preds = np.log10(model_preds + 1.0e-6)
+        plot_high = np.log10(img_uncert_high + 1.0e-6)
+        mask_threshold = -5.9
+
+        # Exponential tick labels for log scale
+        pred_labels = [f"{(10 ** (i)):.2f}" for i in pred_ticks]
+        uncert_labels = [f"{(10 ** (i)):.2f}" for i in pred_uncert_ticks]
+    else:
+        plot_low = img_uncert_low
+        plot_preds = model_preds
+        plot_high = img_uncert_high
+        mask_threshold = 0.0
+
+        # Standard linear tick labels
+        pred_labels = [f"{i:.2f}" if isinstance(i, float) else str(i) for i in pred_ticks]
+        uncert_labels = [f"{i:.2f}" if isinstance(i, float) else str(i) for i in pred_uncert_ticks]
+
+    # --- Setup 3-Column Figure ---
+    fig1, (ax1, ax2, ax3) = plt.subplots(
+        ncols=3, figsize=figsize, sharex=True, sharey=True
+    )
+    fig1.patch.set_visible(True)
+    ord_val = 0
+
+    # ==========================================
+    # Column 1: Lower Limit (Left)
+    # ==========================================
+    ax1.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
+    img_low = ax1.imshow(
+        np.ma.masked_where(plot_low <= mask_threshold, plot_low),
+        cmap=cmap,
+        extent=extent,
+        aspect=ASPECT,
+        zorder=ord_val + 1,
+    )
+    ax1.set_title(
+        f"Lower Limit ({product_name})",
+        fontsize=BIGGER_SIZE,
+        fontweight="bold",
+    )
+    img_low.set_clim(pred_uncert_ticks[0], pred_uncert_ticks[-1])
+    colorbar(img_low, ticks_list=pred_uncert_ticks, lbl_list=uncert_labels)
+
+    # ==========================================
+    # Column 2: Model Predictions (Middle)
+    # ==========================================
+    ax2.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
+    img_mid = ax2.imshow(
+        np.ma.masked_where(plot_preds <= mask_threshold, plot_preds),
+        cmap=cmap,
+        extent=extent,
+        aspect=ASPECT,
+        zorder=ord_val + 1,
+    )
+    ax2.set_title(
+        f"MDN Predictions ({product_name})",
+        fontsize=BIGGER_SIZE,
+        fontweight="bold",
+    )
+    img_mid.set_clim(pred_ticks[0], pred_ticks[-1])
+    colorbar(img_mid, ticks_list=pred_ticks, lbl_list=pred_labels)
+
+    # ==========================================
+    # Column 3: Upper Limit (Right)
+    # ==========================================
+    ax3.imshow(rgb_img, extent=extent, aspect=ASPECT, zorder=ord_val)
+    img_high = ax3.imshow(
+        np.ma.masked_where(plot_high <= mask_threshold, plot_high),
+        cmap=cmap,
+        extent=extent,
+        aspect=ASPECT,
+        zorder=ord_val + 1,
+    )
+    ax3.set_title(
+        f"Upper Limit ({product_name})",
+        fontsize=BIGGER_SIZE,
+        fontweight="bold",
+    )
+    img_high.set_clim(pred_uncert_ticks[0], pred_uncert_ticks[-1])
+    colorbar(img_high, ticks_list=pred_uncert_ticks, lbl_list=uncert_labels)
+
+    plt.tight_layout()
 
     if not ipython_mode:
         return fig1
@@ -866,3 +1066,4 @@ if __name__ == "__main__":
     tile_path = f"data/example_imagery/{sensor}/{date}/{location}/sat_cube.nc"
 
     img_rgb = find_rgb_img_nc(tile_path, sensor)
+

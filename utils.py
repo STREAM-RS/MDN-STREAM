@@ -7,6 +7,7 @@ import subprocess
 import sys
 import warnings
 import zipfile
+import shutil
 from datetime import datetime as dt
 from importlib import import_module
 from pathlib import Path
@@ -20,23 +21,76 @@ from .meta import get_sensor_bands, ANCILLARY, PERIODIC
 from .parameters import update, hypers, flags, get_args
 
 supported_models = {
-    'OLI': ['chl,tss,cdom', 'chl'],
+    'OLI': ['chl,tss,cdom'],
 
-    'OLCI': ['chl,tss,cdom', 'chl'],
+    'OLCI': ['chl,tss,cdom'],
 
-    'MSI': ['chl,tss,cdom', 'chl'],
+    'MSI': ['chl,tss,cdom'],
 
-    'S3A': ['chl,tss,cdom,pc'],
-    'S3B': ['chl,tss,cdom,pc'],
+    #'S3A': ['chl,tss,cdom,pc'],
+    #'S3B': ['chl,tss,cdom,pc'],
 
     'HICO': ['aph,chl,tss,pc,ad,ag,cdom'],
 
     'PRISMA': ['aph,chl,tss,pc,ad,ag,cdom'],
-    'PACE': ['aph,chl,tss,pc,ad,ag,cdom'],
-    'PACE-sat': ['aph,chl,tss,pc,ad,ag,cdom'],
+    #'PACE': ['aph,chl,tss,pc,ad,ag,cdom'],
+    'PACE-delivery': ['aph,chl,tss,pc,ad,ag,cdom'],
     'VI': ['Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667'],
     'MOD': ['Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667'],
     'MERIS': ['Chl,TSS,aCDOM443,aCDOM555,aNAP443,aNAP555,aph443,aph488,aph555,aph667'],
+}
+
+
+
+# THE CENTRAL REGISTRY (Define once at the top of your script)
+IMAGERY_REGISTRY = {
+    ("HICO", "09-08-2014", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/0i6b4j9m29ilyip20y8k37kjzorra98k.nc"
+    },
+    ("OLI", "03-16-2019", "San Francisco Bay"): {
+        "link": "https://nasagov.box.com/shared/static/3m9u778rzlnbs0bftm1o2527ctigg4vf.nc",
+        "rgb_link": "https://nasagov.box.com/shared/static/iekn2w8tjygvh66o8e1uiwsgq42hipzu.png"
+    },
+    ("OLCI", "08-29-2016", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/96yy3e4d89clyaeixpgsj31lcgjbhbx6.nc",
+        "rgb_link": "https://nasagov.box.com/shared/static/6e30vvypp0ryy43u3yh2tenh5fy766ac.png"
+    },
+    ("OLCI", "06-08-2018", "Utah Lake"): {
+        "link": "https://nasagov.box.com/shared/static/ksq9yqgfhu5ae4rffakjdgv6v66tcral.nc",
+        "rgb_link": "https://nasagov.box.com/shared/static/zz68knzmjfjkzy7u5hkmrlb7i1y10rv3.png"
+    },
+    ("OLCI", "03-16-2019", "San Francisco Bay"): {
+        "link": "https://nasagov.box.com/shared/static/klco8ktabzboixnqeghtc9syms7j9q07.nc",
+        "rgb_link": "https://nasagov.box.com/shared/static/qcsexizc55g3hxl3ez29pzr01gvrrpcg.png"
+    },
+    ("PACE", "05-31-2024", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/sk8bunpkvltneyh3ar4at9d9c4rjr29e.nc"
+    },
+    ("PACE", "06-12-2024", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/wq426gu1a3tfae2qa5t3thj74xhj67ij.nc"
+    },
+    ("PACE", "09-16-2024", "Lake Erie"): {
+        "link": "https://nasagov.box.com/shared/static/5bmlcmrc8fy51610hpdfrhr6g7sg9bwy.nc"
+    },
+    ("EMIT", "11-08-2023", "KR"): {
+        "link": "https://nasagov.box.com/shared/static/0wu8nnudn525yon3ekgs94zt1mmkefvg.nc"
+    },
+    ("MOD", "12-26-2018", "Aqua: Chesapeake Bay"): {
+        "link": "https://nasagov.box.com/shared/static/drl3zpwe5mscq2wt4c998dy61xdeio58.nc"
+    },
+    ("VI", "12-26-2018", "SNPP: Chesapeake Bay"): {
+        "link": "https://nasagov.box.com/shared/static/yszmf5dkjcytqzciq2bwe4yh7vs341b8.nc"
+    },
+    ("AVIRISNG", "10-26-2023", "Zeekoevlei"): {
+        "link": "https://nasagov.box.com/shared/static/1yhhngri1yf8bdrs1rf7e4i2ylftqg3k.nc"
+    },
+    ("PRISM", "10-26-2023", "Zeekoevlei"): {
+        "link": "https://nasagov.box.com/shared/static/lgh2vlapl1ajxuciz7resuzb8wr3fzb7"
+    },
+    ("PRISM", "10-26-2023", "Zeekoevlei_hdr"): {
+        "link": "https://nasagov.box.com/s/1ez4u1rhn3jtbs42ukowecult6x2q2xq"
+    },
+
 }
 
 
@@ -44,7 +98,8 @@ def current_support():
     ctr = 1
     for key in supported_models:
         for item in supported_models[key]:
-            print(f'Model-{ctr}: predicts {item} from {key} data')
+            print(f'{key}: predicts {item}')
+
             ctr += 1
 
 
@@ -54,9 +109,22 @@ def uncompress(path, overwrite=False):
         if path.with_suffix('.zip').exists():
             with zipfile.ZipFile(path.with_suffix('.zip'), 'r') as zf:
                 zf.extractall(path)
+                
+        # path is 'name', nested_path looks for 'name/name'
+        nested_path = path / path.name
+        
+        # Check if the duplicate folder exists and is actually a directory
+        if nested_path.is_dir():
+            # Move all contents from 'name/name/*' up to 'name/'
+            for item in nested_path.iterdir():
+                # shutil.move handles both files and folders seamlessly
+                shutil.move(str(item), str(path))
+                
+            # Delete the now-empty nested 'name/name' directory
+            nested_path.rmdir()
 
 
-def download_example_imagery(sensor, date, location, dest=None):
+"""def download_example_imagery(sensor, date, location, dest=None):
     rgb_link = ''
     if sensor == "HICO" and date == "09-08-2014" and location == "Lake Erie":
         link = "https://nasagov.box.com/shared/static/0i6b4j9m29ilyip20y8k37kjzorra98k.nc"
@@ -95,7 +163,53 @@ def download_example_imagery(sensor, date, location, dest=None):
     # with zipfile.ZipFile(dest, 'r') as zf:
     # zf.extractall(Path(os.getcwd() + "/example_imagery/"))
 
-    return dest
+    return dest"""
+
+
+# FUNCTION TO PRINT COMPOSITIONS
+def print_available_imagery():
+    """Prints a clean summary table of all available sensor datasets."""
+    print(f"{'SENSOR':<10} | {'DATE':<12} | {'LOCATION':<20}")
+    print("-" * 50)
+    
+    # .keys() gives us the tuples: (sensor, date, location)
+    for sensor, date, location in sorted(IMAGERY_REGISTRY.keys()):
+        print(f"{sensor:<10} | {date:<12} | {location:<20}")
+
+
+
+# FUNCTION TO DOWNLOAD IMAGERY
+
+def download_example_imagery(sensor: str, date: str, location: str, dest=None) -> str:
+    """Download example satellite imagery and optional RGB quicklooks."""
+    
+    # Check if the requested combo exists in our global registry
+    key = (sensor, date, location)
+    if key not in IMAGERY_REGISTRY:
+        raise ValueError(f"No images found for {location} from the {sensor} sensor on {date}")
+        
+    image_meta = IMAGERY_REGISTRY[key]
+    link = image_meta["link"]
+    rgb_link = image_meta.get("rgb_link") # Returns None cleanly if missing
+
+    # Resolve paths cleanly
+    base_dir = Path(dest) if dest is not None else Path.cwd()
+    target_dir = base_dir / "data" / "example_imagery" / sensor / date / location
+    dest_nc = target_dir / "sat_cube.nc"
+    dest_png = target_dir / "sat_rgb.png"
+
+    # Execute downloads if missing
+    if not dest_nc.exists():
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Downloading NetCDF image cube to {dest_nc}...")
+        subprocess.run(["curl", "-L", link, "-o", str(dest_nc)], check=True)
+        
+        if rgb_link:
+            print(f"Downloading RGB quicklook to {dest_png}...")
+            subprocess.run(["curl", "-L", rgb_link, "-o", str(dest_png)], check=True)
+            
+    return str(dest_nc)    
 
 
 def download_weights(model_path_name):
@@ -116,14 +230,22 @@ def download_weights(model_path_name):
                                                                              "https://nasagov.box.com/shared/static/81pa0tv6uklxt1vko3jt7l1mgmpmgraz.zip"],
         '6f2a6b07f6e8b5723a80c389456e13a6f17d7db02024a425f15f0b340fbb97e0': ["PACE-delivery",
                                                                              MDN_folder + 'PACE-delivery/6f2a6b07f6e8b5723a80c389456e13a6f17d7db02024a425f15f0b340fbb97e0.zip',
-                                                                             "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"],
+                                                                             "https://nasagov.box.com/shared/static/d3x274t98tm4n653tbrxxb55qf9sxo6v.zip"],
         'a854e7a8e92ff0eeb3ae6388a8c1f8255c2a809c1b4a3ec3faf639953e3fde28': ["PACE-delivery",
                                                                              MDN_folder + 'PACE-delivery/a854e7a8e92ff0eeb3ae6388a8c1f8255c2a809c1b4a3ec3faf639953e3fde28.zip',
                                                                              "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"],
         '3559908f0e198546e108084db62ba17b644bffe31d40adabfa9752cb43bcacbc': ["PACE-delivery",
                                                                              MDN_folder + 'PACE-delivery/3559908f0e198546e108084db62ba17b644bffe31d40adabfa9752cb43bcacbc.zip',
-                                                                             "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"]
-
+                                                                             "https://nasagov.box.com/shared/static/eevzbezbl5xj5p7irp3jk20g0gmtlgqb.zip"],
+        'a3fef49195d5c65f17ca3b34ba6563a41879aa7e15685b18d646d890f7c282b2': ["EMIT",
+                                                                             MDN_folder + 'EMIT/a3fef49195d5c65f17ca3b34ba6563a41879aa7e15685b18d646d890f7c282b2.zip',
+                                                                             "https://nasagov.box.com/shared/static/84z356o4z7rqcb9twvbrb3u4gykp7gqv.zip"],
+        '4e4cecb75957e060e0caf70f751e6435dad5e391d04485f5376f061081eeec67': ["PRISM",
+                                                                             MDN_folder + 'PRISM/4e4cecb75957e060e0caf70f751e6435dad5e391d04485f5376f061081eeec67.zip',
+                                                                             "https://nasagov.box.com/shared/static/karkt1amepy3keuzdfvy1yjb6685em9w.zip"],
+        '87e72ac535fd367718e019c3671deb665a999b5550a9caeb343a681afdf710a9': ["AVIRISNG",
+                                                                             MDN_folder + 'AVIRISNG/87e72ac535fd367718e019c3671deb665a999b5550a9caeb343a681afdf710a9.zip',
+                                                                             "https://nasagov.box.com/shared/static/6obyn1q5vumn8e8ogws5azpzfo83od08.zip"],
     }
 
     if model_path_name in downloadable_weights.keys():
@@ -469,7 +591,7 @@ def generate_config(args, create=True, verbose=True):
         # Hash is always dependent upon these values
         dependents = [getattr(act, 'dest', '') for group in [hypers, update] for act in group._group_actions]
         dependents += ['x_scalers', 'y_scalers']
-        if args.sensor in ['PRISMA', 'HICO', 'PACE',
+        if args.sensor in ['PRISMA', 'HICO', 'PACE','EMIT','PRISM','AVIRISNG',
                            'PACE-delivery'] and args.product == 'aph,chl,tss,pc,ad,ag,cdom': dependents += ['allow_missing',
                                                                                                             'allow_nan_inp',
                                                                                                             'allow_nan_out',

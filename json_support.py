@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.base import TransformerMixin
 
-from .transformers import TransformerPipeline
+from .transformers import TransformerPipeline, deserialize_transformer
 
 
 # -------------------
@@ -68,9 +68,9 @@ def serialize_transformer(transformer):
     }
 
 
-def deserialize_transformer(data):
+#def deserialize_transformer(data):
     """Recreate any sklearn TransformerMixin from serialized form."""
-    module_name, cls_name = data["class_path"].rsplit(".", 1)
+    """module_name, cls_name = data["class_path"].rsplit(".", 1)
     module = importlib.import_module(module_name)
     cls = getattr(module, cls_name)
 
@@ -80,7 +80,7 @@ def deserialize_transformer(data):
     for attr, val in data.get("state", {}).items():
         setattr(transformer, attr, np.array(val) if isinstance(val, list) else val)
 
-    return transformer
+    return transformer"""
 
 
 # ----------------------------
@@ -119,7 +119,12 @@ def make_serializable(obj):
     elif isinstance(obj, Path):
         return {"_kind": "Path", "data": str(obj)}
     elif isinstance(obj, slice):
-        return {"_kind": "Slice", "start": int(obj.start), "stop": int(obj.stop), "step": obj.step}
+        return {
+            "_kind": "Slice",
+            "start": int(obj.start) if obj.start is not None else None,
+            "stop": int(obj.stop) if obj.stop is not None else None,
+            "step": int(obj.step) if obj.step is not None else None
+        }
     elif isinstance(obj, np.random.RandomState):
         state = obj.get_state()
         state_list = list(state)
@@ -147,7 +152,10 @@ def restore_object(obj):
             return Path(obj["data"])
 
         elif kind == "Slice":
-            return slice(int(obj["start"]), int(obj["stop"]), obj["step"])
+            start = int(obj["start"]) if obj["start"] is not None else None
+            stop = int(obj["stop"]) if obj["stop"] is not None else None
+            step = int(obj["step"]) if obj["step"] is not None else None
+            return slice(start, stop, step)
 
         elif kind == "NumpyRandomState":
             state = list(tuple(obj["data"]))

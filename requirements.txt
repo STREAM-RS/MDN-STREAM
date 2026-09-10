@@ -1,22 +1,44 @@
-numpy==2.3.3
-h5py>=3.10
+# --- Machine Learning & Numerics ---
 tensorflow==2.20.0
+tensorflow-probability==0.25.0
 keras==3.10.0
 scikit-learn==1.7.2
-matplotlib>=3.8.0
-netCDF4==1.7.2
-seaborn>=0.13.0
+lightgbm==4.7.0
 scipy==1.16.0
+numpy==2.3.3
+pandas==2.3.1
+
+# --- Geospatial & Satellite Processing ---
+rasterio==1.4.3
+rioxarray==0.23.0
+xarray==2026.7.0
+netCDF4==1.7.2
+cftime==1.6.4.post1
+pyproj==3.7.1
+shapely==2.1.2
+sentinelhub==3.11.5
+s2cloudless==1.7.3
+utm==0.8.1
+srtm==0.3.6
+
+# --- Data Parallelism & Imaging ---
+dask==2026.7.1
 scikit-image==0.25.2
-torch==2.8.0
-torchvision==0.23.0
-torchaudio==2.8.0
-notebook==7.4.5
-jupyterlab==4.4.7
-ipykernel==6.30.1
+opencv-python-headless==5.0.0.93
+pillow==11.3.0
+tifffile==2025.6.11
+
+# --- Visualization & Utilities ---
+matplotlib==3.10.6
+seaborn==0.13.2
+tensorboard==2.20.0
 tqdm==4.67.1
-tf_keras==2.20.1    
-xarray==2025.7.1
-tensorflow_probability==0.25.0
-psycopg2-binary>=2.9
-gdal>=3.11
+
+# --- Notebooks ---
+jupyterlab==4.4.7
+notebook==7.4.5
+ipywidgets==8.1.8
+ipykernel==6.30.1
+
+# --- Custom / DB ---
+psycopg2-binary==2.9.10

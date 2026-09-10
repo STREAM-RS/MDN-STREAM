@@ -326,7 +326,19 @@ class MDN:
         # inv_scaler  = lambda y: tf.math.exp((tf.reshape(y, shape=[-1]) - yscaler_a) / yscaler_b)
         # extract_est = lambda z: self._get_top_estimate( self._parse_outputs(z) )
 
-        optimizer = tf.keras.optimizers.Adam(self.lr)
+        if version.parse(tf.__version__) <= version.parse("2.11.0"):
+            optimizer = tf.keras.optimizers.legacy.Adam(self.lr)    
+        else:
+            optimizer = tf.keras.optimizers.Adam(self.lr)
+        
+        import platform
+        
+        is_mac           = platform.system() == "Darwin"
+        is_apple_silicon = platform.processor() == "arm"
+        
+        if is_mac and is_apple_silicon:
+            optimizer = tf.keras.optimizers.legacy.Adam(self.lr)
+
         self.model = tf.keras.Sequential(model_layers + [output_layer], name=self.model_name)
         self.model.compile(loss=self.loss, optimizer=optimizer, metrics=[])  # [MSA(extract_est, inv_scaler)])
 
@@ -395,7 +407,7 @@ class MDN:
 
         tf.random.set_global_generator(self.tf_random)
         'Load version appropriate model name'
-        if version.parse(tf.__version__) < version.parse("2.11.0"):
+        if version.parse(tf.__version__) <= version.parse("2.11.0"):
             'Check if a tensorflow saved model in HDFs format'
             if self.model_path.joinpath('trained_model.h5').is_file():
                 'Load Tensorflow model'
@@ -409,7 +421,7 @@ class MDN:
                 'Save model as HDFS to enable processing with other tensorflow versions'
                 self.model.save(self.model_path.joinpath('trained_model.h5'))
             else:
-                assert True, f"❌. No pre-trained Tensorflow models/checkpoints found at {self.model_path}."
+                raise FileNotFoundError( f"❌. No pre-trained Tensorflow models/checkpoints found at {self.model_path}.")
         else:
             if self.model_path.joinpath('trained_model.h5').is_file():
                 'Load Tensorflow model'
@@ -417,11 +429,21 @@ class MDN:
                                                         custom_objects={"MixtureLayer": MixtureLayer,
                                                                         "loss": self.loss},
                                                         compile=False)
-                self.model.compile(loss=self.loss, optimizer=tf.keras.optimizers.Adam(self.lr), metrics=[])
+                import platform
+                is_mac           = platform.system() == "Darwin"
+                is_apple_silicon = platform.processor() == "arm"
+                
+                if is_mac and is_apple_silicon:
+                    optimizer = tf.keras.optimizers.legacy.Adam(self.lr)
+                else:
+                    optimizer=tf.keras.optimizers.Adam(self.lr)
+                    
+                self.model.compile(loss=self.loss, optimizer=optimizer, metrics=[])
             else:
-                assert True, f"❌. No pre-trained Tensorflow models found at {self.model_path}. " \
-                             f"Since we are using Tensorflow {version.parse(tf.__version__)} need a saved HDFS model," \
-                             f"cannot use checkpoints from old Tensorflow versions."
+                raise FileNotFoundError(
+                    f"❌ No pre-trained TensorFlow models found at {self.model_path}. "
+                    f"Since we are using TensorFlow {version.parse(tf.__version__)}, "
+                    f"you need a saved HDFS model; cannot use checkpoints from older versions.")
 
     def get_coefs(self, output):
         prior, mu, scale = self._parse_outputs(output)

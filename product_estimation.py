@@ -57,7 +57,7 @@ def get_estimates(args, x_train=None, y_train=None, x_test=None, y_test=None, ou
     x_valid, y_valid = None, None
 
     outputs = dd(list)
-    for round_num in trange(args.n_rounds, disable=args.verbose or (args.n_rounds == 1) or args.silent):
+    for round_num in trange(args.n_rounds, disable=(not args.verbose or (args.n_rounds == 1)) or args.silent):
         args.curr_round = round_num
         curr_round_seed = args.seed + round_num if args.seed is not None else None
         np.random.seed(curr_round_seed)
@@ -129,7 +129,7 @@ def get_estimates(args, x_train=None, y_train=None, x_test=None, y_test=None, ou
 
     if len(outputs) == 1:
         outputs = list(outputs.values())[0]
-    if len(model.output_slices.keys()) == 1 and args.sensor in ['MOD', 'VI', 'MERIS']:
+    if len(model.output_slices.keys()) == 1: #and args.sensor in ['MOD', 'VI', 'MERIS']:
         renamed_slices = [
             product_slice.replace('CDOM', 'g').replace('NAP', 'd').replace('TSS', 'tss').replace('Chl', 'chl') for
             product_slice in args.product.split(',')]

@@ -1,4 +1,5 @@
 import argparse
+from .meta import check_sensor_availability
 
 parser = argparse.ArgumentParser(epilog="""
 	Passing a filename will estimate the desired parameter from the Rrs 
@@ -106,6 +107,8 @@ hypers.add_argument("--lr", default=1e-3, type=float, help="Learning rate")
 hypers.add_argument("--l2", default=1e-3, type=float, help="L2 regularization")
 hypers.add_argument("--epsilon", default=1e-3, type=float,
                     help="Variance regularization (ensures covariance has a valid decomposition)")
+hypers.add_argument("--no_data", default=-999, type=float,
+                    help="The dafault NO DATA value for this toolbox")
 
 dataset = parser.add_mutually_exclusive_group()
 dataset.add_argument("--all_test", action="store_const", dest="dataset", const="all")
@@ -123,4 +126,8 @@ def get_args(kwargs={}, use_cmdline=False, **kwargs2):
 
     for k, v in kwargs2.items():
         setattr(args, k, v)
+
+    # Adding a check to make sure the sensor is valid
+    assert check_sensor_availability(args.sensor), f'Unknown sensor: {args.sensor}'
+
     return args
