@@ -33,6 +33,8 @@ min_in_out_val = 1e-6
 
 # If new default model is defined for a sensor this Dictionary needs to be updated.
 DEFAULT_SENSOR_PRODUCT_COMBINATIONS = {
+    "MSI"         : 'chl,tss,cdom',
+    "OLI"         : 'chl,tss,cdom',
     "OLCI"         : 'chl,tss,cdom,pc',
     "PACE-delivery": 'aph,chl,tss,pc,ad,ag,cdom',
     "EMIT"         : 'aph,chl,tss,pc,ad,ag,cdom',
@@ -94,6 +96,26 @@ def get_default_pipeline_kwargs(sensor, product):
            'sensor': "MOD",
            'silent': True,
            'model_uid': "16a3fb66d506d555444846b40f680ee76bfa36c7514940ab85b83884548e350c"
+       }
+    if sensor in ["OLI"]:
+        max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
+        kwargs = {
+           'product': "chl,tss,cdom",
+           'sat_bands': False,
+           'model_loc': "Weights",
+           'sensor': "OLI",
+           'silent': True,
+           'model_uid': "c42180fb52344bc80726538ecdfb07569b29cc802f27ab3c2789ab41302d701e"
+       }
+    if sensor in ["MSI"]:
+        max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
+        kwargs = {
+           'product': "chl,tss,cdom",
+           'sat_bands': False,
+           'model_loc': "Weights",
+           'sensor': "MSI",
+           'silent': True,
+           'model_uid': "1b79098defa9693eb03ac734467c3854cf4fb81ce3d1a96b9bf0f511f1c997b1"
        }
     if sensor in ["VI"]:
         max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
