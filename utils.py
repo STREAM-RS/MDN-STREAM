@@ -71,7 +71,26 @@ IMAGERY_REGISTRY = {
     },
     ("PACE", "09-16-2024", "Lake Erie"): {
         "link": "https://nasagov.box.com/shared/static/5bmlcmrc8fy51610hpdfrhr6g7sg9bwy.nc"
-    }
+    },
+    ("EMIT", "11-08-2023", "KR"): {
+        "link": "https://nasagov.box.com/shared/static/0wu8nnudn525yon3ekgs94zt1mmkefvg.nc"
+    },
+    ("MOD", "12-26-2018", "Aqua: Chesapeake Bay"): {
+        "link": "https://nasagov.box.com/shared/static/drl3zpwe5mscq2wt4c998dy61xdeio58.nc"
+    },
+    ("VI", "12-26-2018", "SNPP: Chesapeake Bay"): {
+        "link": "https://nasagov.box.com/shared/static/yszmf5dkjcytqzciq2bwe4yh7vs341b8.nc"
+    },
+    ("AVIRISNG", "10-26-2023", "Zeekoevlei"): {
+        "link": "https://nasagov.box.com/shared/static/1yhhngri1yf8bdrs1rf7e4i2ylftqg3k.nc"
+    },
+    ("PRISM", "10-26-2023", "Zeekoevlei"): {
+        "link": "https://nasagov.box.com/shared/static/lgh2vlapl1ajxuciz7resuzb8wr3fzb7"
+    },
+    ("PRISM", "10-26-2023", "Zeekoevlei_hdr"): {
+        "link": "https://nasagov.box.com/s/1ez4u1rhn3jtbs42ukowecult6x2q2xq"
+    },
+
 }
 
 
