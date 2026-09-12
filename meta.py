@@ -224,7 +224,8 @@ SENSOR_BANDS = {
 
     'SD8':       [ 444, 492, 533, 566, 612, 666, 707],
     'SD8-cc_base': [ 444, 492, 566, 666, 707],          # Standardized subset to enable comparision to MSI/OLI
- 
+    'SD8-cc_base-rho': [ 444, 492, 566, 666, 707],          # Standardized subset to enable comparision to MSI/OLI
+    
     'HYPER': list(range(400, 799)),
     'HYPER-nan': list(range(400, 801)),
 }

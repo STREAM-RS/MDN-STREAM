@@ -50,6 +50,36 @@ DEFAULT_SENSOR_PRODUCT_COMBINATIONS = {
 }
 PRODUCT_PATTERN=  r'^[^\s,]+(,[^\s,]+)+$'
 
+def load_water_quality_csv(file_path):
+    """
+    Dynamically loads water quality CSV data.
+    Ensures 'chl', 'tss', 'cdom', and 'pc' are captured even with missing data or bad rows.
+    """
+    # Define your target parameters
+    targets = ['chl', 'tss', 'cdom', 'pc']
+    
+    try:
+        # 1. Read CSV, skipping completely corrupted lines, and treating empty slots as NaN
+        df = pd.read_csv(file_path, on_bad_lines='skip', skipinitialspace=True)
+        
+        # 2. Match target columns dynamically (handles lowercase/uppercase mix-ups)
+        df.columns = df.columns.str.strip().str.lower()
+        found_columns = [col for col in targets if col in df.columns]
+        
+        # 3. Filter the dataframe to only include the found target columns
+        df = df[found_columns]
+        
+        # 4. Optional: If any targets were completely missing from the header, create them as empty
+        for target in targets:
+            if target not in df.columns:
+                df[target] = pd.NA
+                
+        return df[targets] # Return in exact consistent order
+        
+    except Exception as e:
+        print(f"Error loading file: {e}")
+        return pd.DataFrame(columns=targets)
+    
 
 def get_default_pipeline_kwargs(sensor, product):
     """
@@ -137,6 +167,16 @@ def get_default_pipeline_kwargs(sensor, product):
            'silent': True,
            'model_uid': "fadf7c51442969f4f9cde83fdad8a1b958a1dff1523f66fc331f376877e02b59"
        }
+    if sensor in ["HICO"]:
+        max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
+        kwargs = {
+           'product': "chl",
+           'sat_bands': False,
+           'model_loc': "Weights",
+           'sensor': "HICO",
+           'silent': True,
+           'model_uid': "fa50ae29755c1f2cf7b3eaeb552245830c580cbb59b0b9e39992ff89c0cc3020"
+       }
     # Logic for OLCI Sensor
     if sensor in ["S3A", 'S3B', 'OLCI']:
         max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
@@ -193,7 +233,7 @@ def get_default_pipeline_kwargs(sensor, product):
     
     
     # Logic for PACE-delivery Sensor
-    elif sensor in ["PACE-delivery","EMIT","AVIRISNG","PRISM","HICO","PRISMA"]:
+    elif sensor in ["PACE-delivery","EMIT","AVIRISNG","PRISM","PRISMA"]: #"HICO",
         max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
         model_uid_dict = {
                             "PACE-delivery":"6f2a6b07f6e8b5723a80c389456e13a6f17d7db02024a425f15f0b340fbb97e0",

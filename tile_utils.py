@@ -26,6 +26,54 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
+
+def fix_geo_orientation(da: xr.DataArray) -> xr.DataArray:
+    """
+    Detects if a DataArray is flipped North-South or East-West
+    handling both 1D and 2D latitude/longitude coordinate grids.
+    """
+    da_corrected = da.copy()
+    
+    # Identify the coordinate and dimension names from your DataArray
+    # Typically, the dimensions themselves are still named 'x' and 'y' or 'lat' and 'lon'
+    lon_name = next((c for c in da_corrected.coords if c in ['longitude', 'lon', 'x']), None)
+    lat_name = next((c for c in da_corrected.coords if c in ['latitude', 'lat', 'y']), None)
+    
+    # 1. Check East-West Orientation (Longitude)
+    if lon_name:
+        lon_vals = da_corrected[lon_name].values
+        
+        # Safe extraction for both 1D and 2D arrays
+        # We compare the first column to the last column along the horizontal axis
+        first_lon = lon_vals[0, 0] if lon_vals.ndim == 2 else lon_vals[0]
+        last_lon = lon_vals[0, -1] if lon_vals.ndim == 2 else lon_vals[-1]
+        
+        if first_lon > last_lon:
+            # We look for the underlying dimension name to flip (usually 'x' or the lon_name itself)
+            dim_to_flip = 'x' if 'x' in da_corrected.dims else lon_name
+            print(f"🔄 Detected East-West flip. Reversing dimension '{dim_to_flip}'.")
+            da_corrected = da_corrected.isel({dim_to_flip: slice(None, None, -1)})
+            
+    # 2. Check North-South Orientation (Latitude)
+    if lat_name:
+        lat_vals = da_corrected[lat_name].values
+        
+        # Safe extraction for both 1D and 2D arrays
+        # We compare the top row to the bottom row along the vertical axis
+        first_lat = lat_vals[0, 0] if lat_vals.ndim == 2 else lat_vals[0]
+        last_lat = lat_vals[-1, 0] if lat_vals.ndim == 2 else lat_vals[-1]
+        
+        # Standard: South to North should increase. 
+        # If the first row (index 0) is greater than the last row, it's flipped North-to-South.
+        if not first_lat > last_lat:
+            dim_to_flip = 'y' if 'y' in da_corrected.dims else lat_name
+            print(f"🔄 Detected North-South flip. Reversing dimension '{dim_to_flip}'.")
+            da_corrected = da_corrected.isel({dim_to_flip: slice(None, None, -1)})
+
+            
+    return da_corrected
+
+
 def translate_wavelengths_to_landsat_bands(requested_bands, wavelength_unit="nm", tolerance=5):
     """
     Translates input center wavelengths into official Landsat 8/9 OLI string band names.

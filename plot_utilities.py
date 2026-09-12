@@ -610,7 +610,7 @@ def find_rgb_img_nc(file_name, sensor, rhos=True):
     return img_rgb
 
 
-def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, flipud=False, ipython_mode=False,use_rhos=True):
+def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, ipython_mode=False,use_rhos=True):
     """
     This function can be used extract an RGB image by using the rhos data present in a netCDF file
 
@@ -635,9 +635,30 @@ def display_sat_rgb(file_name, sensor, figsize=(15, 5), title=None, flipud=False
     lon, lat, extent = get_tile_geographic_info(file_name)
     'Get the rgb composite'
     rgb_img = find_rgb_img_nc(file_name, sensor,rhos=use_rhos)
+  
+    # 1. Check East-West Orientation (Longitude)
 
-    'If needed flip the image'
-    if flipud:
+    # Safe extraction for both 1D and 2D arrays
+    # We compare the first column to the last column along the horizontal axis
+    first_lon = lon[0, 0]  if lon.ndim == 2 else lon[0]
+    last_lon  = lon[0, -1] if lon.ndim == 2 else lon[-1]
+    
+    if first_lon > last_lon:
+        # We look for the underlying dimension name to flip (usually 'x' or the lon_name itself)
+        print("🔄 Detected East-West flip. Reversing dimension")
+        rgb_img = np.fliplr(rgb_img)
+        
+    # 2. Check North-South Orientation (Latitude)
+
+    # Safe extraction for both 1D and 2D arrays
+    # We compare the top row to the bottom row along the vertical axis
+    first_lat = lat[0, 0]  if lat.ndim == 2 else lat[0]
+    last_lat  = lat[-1, 0] if lat.ndim == 2 else lat[-1]
+    
+    # Standard: South to North should increase. 
+    # If the first row (index 0) is greater than the last row, it's flipped North-to-South.
+    if not first_lat > last_lat:
+        print("🔄 Detected North-South flip. Reversing dimension.")
         rgb_img = np.flipud(rgb_img)
 
 
