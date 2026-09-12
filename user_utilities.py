@@ -50,6 +50,36 @@ DEFAULT_SENSOR_PRODUCT_COMBINATIONS = {
 }
 PRODUCT_PATTERN=  r'^[^\s,]+(,[^\s,]+)+$'
 
+def load_water_quality_csv(file_path):
+    """
+    Dynamically loads water quality CSV data.
+    Ensures 'chl', 'tss', 'cdom', and 'pc' are captured even with missing data or bad rows.
+    """
+    # Define your target parameters
+    targets = ['chl', 'tss', 'cdom', 'pc']
+    
+    try:
+        # 1. Read CSV, skipping completely corrupted lines, and treating empty slots as NaN
+        df = pd.read_csv(file_path, on_bad_lines='skip', skipinitialspace=True)
+        
+        # 2. Match target columns dynamically (handles lowercase/uppercase mix-ups)
+        df.columns = df.columns.str.strip().str.lower()
+        found_columns = [col for col in targets if col in df.columns]
+        
+        # 3. Filter the dataframe to only include the found target columns
+        df = df[found_columns]
+        
+        # 4. Optional: If any targets were completely missing from the header, create them as empty
+        for target in targets:
+            if target not in df.columns:
+                df[target] = pd.NA
+                
+        return df[targets] # Return in exact consistent order
+        
+    except Exception as e:
+        print(f"Error loading file: {e}")
+        return pd.DataFrame(columns=targets)
+    
 
 def get_default_pipeline_kwargs(sensor, product):
     """
