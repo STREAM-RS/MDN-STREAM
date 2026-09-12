@@ -24,3 +24,8 @@ toy*
 Weights/*/*/
 Weights/PACE-delivery
 Weights/EMIT
+Weights/PRISM
+Weights/AVIRISNG
+
+# Mac files
+.DS_Store
