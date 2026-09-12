@@ -137,6 +137,16 @@ def get_default_pipeline_kwargs(sensor, product):
            'silent': True,
            'model_uid': "fadf7c51442969f4f9cde83fdad8a1b958a1dff1523f66fc331f376877e02b59"
        }
+    if sensor in ["HICO"]:
+        max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
+        kwargs = {
+           'product': "chl",
+           'sat_bands': False,
+           'model_loc': "Weights",
+           'sensor': "HICO",
+           'silent': True,
+           'model_uid': "fa50ae29755c1f2cf7b3eaeb552245830c580cbb59b0b9e39992ff89c0cc3020"
+       }
     # Logic for OLCI Sensor
     if sensor in ["S3A", 'S3B', 'OLCI']:
         max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
@@ -193,7 +203,7 @@ def get_default_pipeline_kwargs(sensor, product):
     
     
     # Logic for PACE-delivery Sensor
-    elif sensor in ["PACE-delivery","EMIT","AVIRISNG","PRISM","HICO","PRISMA"]:
+    elif sensor in ["PACE-delivery","EMIT","AVIRISNG","PRISM","PRISMA"]: #"HICO",
         max_model_products = DEFAULT_SENSOR_PRODUCT_COMBINATIONS[sensor]
         model_uid_dict = {
                             "PACE-delivery":"6f2a6b07f6e8b5723a80c389456e13a6f17d7db02024a425f15f0b340fbb97e0",
