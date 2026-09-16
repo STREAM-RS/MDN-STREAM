@@ -407,7 +407,7 @@ class MDN:
 
         tf.random.set_global_generator(self.tf_random)
         'Load version appropriate model name'
-        if version.parse(tf.__version__) <= version.parse("2.11.0"):
+        if version.parse(tf.__version__) <= version.parse("2.11.0") or version.parse(tf.__version__) <= version.parse("2.13.0"):
             'Check if a tensorflow saved model in HDFs format'
             if self.model_path.joinpath('trained_model.h5').is_file():
                 'Load Tensorflow model'
@@ -420,6 +420,7 @@ class MDN:
                 self.model.load_weights(self.model_path.joinpath('checkpoint')).expect_partial()
                 'Save model as HDFS to enable processing with other tensorflow versions'
                 self.model.save(self.model_path.joinpath('trained_model.h5'))
+
             else:
                 raise FileNotFoundError( f"❌. No pre-trained Tensorflow models/checkpoints found at {self.model_path}.")
         else:
