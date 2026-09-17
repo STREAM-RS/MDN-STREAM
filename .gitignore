@@ -29,5 +29,8 @@ Weights/AVIRISNG
 Weights/HICO
 Weights/PRISMA
 
+Rrs_manipulation/RSR/Rsr_nc
+Rrs_manipulation/RSR/Rsr_csv
+
 # Mac files
 .DS_Store
