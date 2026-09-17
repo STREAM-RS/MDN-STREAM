@@ -47,6 +47,8 @@ SENSOR_LABEL = {  # http://www.ioccg.org/sensors/seawifs.html
     'AVIRISNG': 'AVIRISNG',
     'HYPER': '1nm Hyperspectral',
     'SD8': 'SuperDove constellation',
+    'SGLI': 'GCOMC-SGLI',
+
 }
 
 
@@ -226,6 +228,9 @@ SENSOR_BANDS = {
     'SD8-cc_base': [ 444, 492, 566, 666, 707],          # Standardized subset to enable comparision to MSI/OLI
     'SD8-cc_base-rho': [ 444, 492, 566, 666, 707],          # Standardized subset to enable comparision to MSI/OLI
     
+    'SGLI':[380,412,443,490,529,566,672,763,],
+    'SGLI-rho':[380,412,443,490,529,566,672,763,],
+
     'HYPER': list(range(400, 799)),
     'HYPER-nan': list(range(400, 801)),
 }
