@@ -218,10 +218,10 @@ def download_weights(model_path_name):
     downloadable_weights = {
         '6041caec3d8c34771f9082740fc3cee1a16d3b1b21cfda0f245e615a0a01570d': ["PRISMA",
                                                                              MDN_folder + 'PRISMA/6041caec3d8c34771f9082740fc3cee1a16d3b1b21cfda0f245e615a0a01570d.zip',
-                                                                             "https://nasagov.box.com/shared/static/6m6hk18cpln772dgsbm6hl2scigmjebz.zip"],
+                                                                             "https://nasagov.box.com/shared/static/ugri5mgrfmbc00nnkdah3sh5e4z4lf5b.zip"],
         'b978ee38b759569c6c6860a6a875f23131cef5ecf5b93d0d67708cb408718c85': ["HICO",
                                                                              MDN_folder + 'HICO/b978ee38b759569c6c6860a6a875f23131cef5ecf5b93d0d67708cb408718c85.zip',
-                                                                             "https://nasagov.box.com/shared/static/c0ginufcrujc8v7yr5mk7j4komoog00p.zip"],
+                                                                             "https://nasagov.box.com/shared/static/8ecx320ixi46q25xl0f1izqunvu6zg89.zip"],
         '6643ade4f109db3d9e0dc8d5bbae613441cd7ed95863320040688ab2e4afe0d8': ["PACE",
                                                                              MDN_folder + 'PACE/6643ade4f109db3d9e0dc8d5bbae613441cd7ed95863320040688ab2e4afe0d8.zip',
                                                                              "https://nasagov.box.com/shared/static/aatfzwn0e2ezdrizib38skett6tawred.zip"],
@@ -632,6 +632,7 @@ def generate_config(args, create=True, verbose=True):
         folder = root.joinpath(uid)
 
     c_file = folder.joinpath('config')
+    print(folder.stem)
     download_weights(folder.stem)
     try:
         uncompress(folder)  # Unzip the archive if necessary
